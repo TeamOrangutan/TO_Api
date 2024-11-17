@@ -1,21 +1,20 @@
-import express from "express";
-import { appRouter } from "./routes";
+import express, { Express } from "express";
+import { PORT } from "./config";
+import rootRouter from "./routes/index"
 import { PrismaClient } from "@prisma/client";
-import dotenv from "dotenv";
 
-dotenv.config();
+const app:Express = express();
 
-const app = express();
+app.use(express.json()); 
 
-export const prismaclient = new PrismaClient();
+app.use('/Api', rootRouter)
 
-
-const PORT = 3000;
-
-
-app.use(express.json());
-app.use('/Api', appRouter)
-
-app.listen(PORT, () => {
-  console.log("App listen in 3000");
+export const prismaclient = new PrismaClient({
+  log:['query']
 });
+
+app.listen(PORT, () => {  
+  console.log(`App listen in some POrt xd`);  
+});
+
+
