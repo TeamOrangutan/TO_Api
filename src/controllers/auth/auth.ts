@@ -1,10 +1,3 @@
-/* import { Request, Response } from "express"
-
-export const login = (_req: Request, res:Response ) => {
-  res.send('login')
-}
- */
-
 import { NextFunction, Request, Response } from "express";
 import { prismaclient } from "../..";
 import { compareSync, hashSync } from "bcrypt";
@@ -13,12 +6,12 @@ import * as jwt from "jsonwebtoken";
 import { JWT_ROUND, JWT_SECRET } from "../../config";
 import { BadRequestsException } from "../../exceptions/bad-requests";
 import { ErrorCode } from "../../exceptions/root";
-import { UnprocessableEntity } from "../../exceptions/validation";
+/* import { UnprocessableEntity } from "../../exceptions/validation"; */
 import { SignupSchema } from "../../schema";
+import { NotFoundException } from "../../exceptions/not-found";
 
 export const signup = async (req: Request, res: Response, next: NextFunction) => {  
-  try {
-    SignupSchema.parse(req.body)
+  SignupSchema.parse(req.body)
     const { correo, contrasena }: userI = req.body;
   
   let Usuario = await prismaclient.usuario.findFirst({ where: { correo } });  
@@ -34,17 +27,15 @@ export const signup = async (req: Request, res: Response, next: NextFunction) =>
     },
   });
   res.json({ data: Usuario }); 
-  } catch (err:any) {
-    next( new UnprocessableEntity(err?.issues, 'Unproccesable entity', ErrorCode.UNPROCESSABLE_ENTITY))
-  }  
 };
 
 export const Login = async (req: Request, res: Response) => {
   const { correo, contrasena } = req.body;
 
-  const user = await prismaclient.usuario.findFirst({ where: { correo } });
+  let user = await prismaclient.usuario.findFirst({ where: { correo } });
   if (!user) {
-    throw Error("User was not found");
+    throw new NotFoundException('User not found', ErrorCode.USER_NOT_FOUND)
+    /* throw Error("User was not found"); */
   }
   if (compareSync(contrasena, user.contrasena)) {
     const token = jwt.sign({ user }, JWT_SECRET, { expiresIn: "1h" });
