@@ -2,13 +2,13 @@ import { Request, Response } from "express";
 import { prismaclient } from "../..";
 
 export const getProduct = async (_req: Request, res: Response) => {
-    const data = await prismaclient.product.findMany(
+    const data = await prismaclient.producto.findMany(
         {
             where: {
-                category_fk: 2
+                producto_pk: 2
             }, 
             select: {
-                name: true
+                nombre: true
             }
         }
     );
@@ -16,11 +16,11 @@ export const getProduct = async (_req: Request, res: Response) => {
 };
 
 
-export const createProduct = async (req: Request, res: Response) => {
+/* export const createProduct = async (req: Request, res: Response) => {
     
     const {name, categoryId} = req.body;
 
-    await prismaclient.product.create({
+    await prismaclient.producto.create({
         data: {
             name, 
             category_fk: categoryId
@@ -29,4 +29,4 @@ export const createProduct = async (req: Request, res: Response) => {
         res.json({message: 'All good', data: response})
     })
 
-}
+} */

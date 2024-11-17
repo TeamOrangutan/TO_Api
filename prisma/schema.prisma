@@ -7,11 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Rol {
-  USUARIO
-  ADMINISTRADOR
-}
-
 model Descripcion {
   descripcion_pk Int      @id @default(autoincrement())
   descripcion    String
@@ -55,6 +50,12 @@ model Registro {
   Usuario     Usuario  @relation(fields: [usuario_fk], references: [user_pk])
 }
 
+model Rol {
+  rol_pk      Int       @id @default(autoincrement())
+  descripcion String
+  Usuario     Usuario[]
+}
+
 model Usuario {
   user_pk    Int        @id @default(autoincrement())
   contrasena String
@@ -62,5 +63,5 @@ model Usuario {
   nombre     String
   rol_fk     Int
   Registro   Registro[]
-  Rol        Rol     
+  Rol        Rol        @relation(fields: [rol_fk], references: [rol_pk])
 }

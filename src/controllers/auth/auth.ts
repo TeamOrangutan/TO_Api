@@ -1,26 +1,42 @@
-import { Request, Response } from "express";
+/* import { Request, Response } from "express"
+
+export const login = (_req: Request, res:Response ) => {
+  res.send('login')
+}
+ */
+
+import { NextFunction, Request, Response } from "express";
 import { prismaclient } from "../..";
 import { compareSync, hashSync } from "bcrypt";
 import { userI } from "../../@types";
 import * as jwt from "jsonwebtoken";
 import { JWT_ROUND, JWT_SECRET } from "../../config";
+import { BadRequestsException } from "../../exceptions/bad-requests";
+import { ErrorCode } from "../../exceptions/root";
+import { UnprocessableEntity } from "../../exceptions/validation";
+import { SignupSchema } from "../../schema";
 
-export const signup = async (req: Request, res: Response) => {
-  const { correo, contrasena }: userI = req.body;
-
-  let Usuario = await prismaclient.usuario.findFirst({ where: { correo } });
+export const signup = async (req: Request, res: Response, next: NextFunction) => {  
+  try {
+    SignupSchema.parse(req.body)
+    const { correo, contrasena }: userI = req.body;
+  
+  let Usuario = await prismaclient.usuario.findFirst({ where: { correo } });  
   if (Usuario) {
-    throw Error("Usuario already exists");
+    next(new BadRequestsException('User already exists!', ErrorCode.USER_ALREADY_EXISTS));
   }
   Usuario = await prismaclient.usuario.create({
     data: {
       correo: correo,
       contrasena: hashSync(contrasena, JWT_ROUND),
       nombre: "Kaiz",
-      rol_fk: 1,
+      rol_fk: 1
     },
   });
-  res.json({ data: Usuario });
+  res.json({ data: Usuario }); 
+  } catch (err:any) {
+    next( new UnprocessableEntity(err?.issues, 'Unproccesable entity', ErrorCode.UNPROCESSABLE_ENTITY))
+  }  
 };
 
 export const Login = async (req: Request, res: Response) => {
