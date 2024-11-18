@@ -1,28 +1,17 @@
+// store.route.ts
 import express from "express";
-import { createProduct, getProducts, updateProductById } from "../../controllers/store/product";
+import { createProduct, getProducts,updateProductById } from "../../controllers/store/product";
 import path from "path";
+
 const router = express.Router();
 
+// Ruta para crear un producto
 router.post("/", createProduct);
+
+// Ruta para obtener todos los productos
 router.get("/", getProducts);
 router.put('/', updateProductById)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+export { router }; // Exportación nombrada
 
 
 

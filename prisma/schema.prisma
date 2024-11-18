@@ -69,28 +69,37 @@ model FPago_CLIENTE {
   formaPago  FORMA_PAGO @relation(fields: [forma_fk], references: [forma_pk])
   cliente    PERSONA    @relation(fields: [cliente_fk], references: [persona_pk])
 }
+
 model PRODUCTOS {
   producto_pk   Int                @id @default(autoincrement())
   nombre        String
   precioVenta   Decimal
   descripcion   String
-  inventarios   INVENTARIO[] 
-  registros     REGISTRO[] 
-  facProducto   FAC_PRODUCTO[] 
-  serigrafiados PRO_SERIGRAFIADO[] 
-  posters       PRO_POSTERS[] 
-  impresiones   PRO_IMPRESION[] 
-  imagenes      IMAGEN[]           // Relación con la tabla de imágenes
+  inventarios   INVENTARIO[]
+  registros     REGISTRO[]
+  facProducto   FAC_PRODUCTO[]
+  serigrafiados PRO_SERIGRAFIADO[]
+  posters       PRO_POSTERS[]
+  impresiones   PRO_IMPRESION[]
+  imagenes      IMAGEN[] // Relación con la tabla de imágenes
+  estado        String             @default("activo") // Estado inicial: activo
+  detalles      DETALLE[]          @relation("ProductoDetalles") // Relación con DETALLE
+  createdAt     DateTime           @default(now())
 }
 
 model IMAGEN {
-  imagen_pk   Int      @id @default(autoincrement())
+  imagen_pk   Int       @id @default(autoincrement())
   producto_fk Int
-  url         String   // Ruta o URL de la imagen
+  url         String // Ruta o URL de la imagen
   producto    PRODUCTOS @relation(fields: [producto_fk], references: [producto_pk]) // Relación con el producto
 }
 
-
+model DETALLE {
+  detalle_pk  Int       @id @default(autoincrement())
+  descripcion String
+  producto_fk Int
+  producto    PRODUCTOS @relation(fields: [producto_fk], references: [producto_pk], name: "ProductoDetalles") // Relación con PRODUCTOS
+}
 
 model INVENTARIO {
   costes_pk    Int       @id @default(autoincrement())

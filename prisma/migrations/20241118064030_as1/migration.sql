@@ -1,0 +1,15 @@
+-- AlterTable
+ALTER TABLE "PRODUCTOS" ADD COLUMN     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ADD COLUMN     "estado" TEXT NOT NULL DEFAULT 'activo';
+
+-- CreateTable
+CREATE TABLE "DETALLE" (
+    "detalle_pk" SERIAL NOT NULL,
+    "descripcion" TEXT NOT NULL,
+    "producto_fk" INTEGER NOT NULL,
+
+    CONSTRAINT "DETALLE_pkey" PRIMARY KEY ("detalle_pk")
+);
+
+-- AddForeignKey
+ALTER TABLE "DETALLE" ADD CONSTRAINT "DETALLE_producto_fk_fkey" FOREIGN KEY ("producto_fk") REFERENCES "PRODUCTOS"("producto_pk") ON DELETE RESTRICT ON UPDATE CASCADE;
