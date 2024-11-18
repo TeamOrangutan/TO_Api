@@ -1,15 +1,14 @@
 import { NextFunction, Request, Response } from "express";
 import { prismaclient } from "../..";
 import { compareSync, hashSync } from "bcrypt";
-import { userI } from "../../@types";
+import { userI } from "../../types";
 import * as jwt from "jsonwebtoken";
 import { JWT_ROUND, JWT_SECRET } from "../../config";
 import { BadRequestsException } from "../../exceptions/bad-requests";
 import { ErrorCode } from "../../exceptions/root";
-/* import { UnprocessableEntity } from "../../exceptions/validation"; */
 import { SignupSchema } from "../../schema";
 import { NotFoundException } from "../../exceptions/not-found";
-
+ 
 export const signup = async (req: Request, res: Response, next: NextFunction) => {  
   SignupSchema.parse(req.body)
     const { correo, contrasena }: userI = req.body;
@@ -34,12 +33,20 @@ export const Login = async (req: Request, res: Response) => {
 
   let user = await prismaclient.usuario.findFirst({ where: { correo } });
   if (!user) {
-    throw new NotFoundException('User not found', ErrorCode.USER_NOT_FOUND)
-    /* throw Error("User was not found"); */
+    throw new NotFoundException('User not found', ErrorCode.USER_NOT_FOUND)    
   }
-  if (compareSync(contrasena, user.contrasena)) {
-    const token = jwt.sign({ user }, JWT_SECRET, { expiresIn: "1h" });
-    return res.json({ message: "Login successful", token });
+  if (!compareSync(contrasena, user.contrasena)) {
+    throw new BadRequestsException('Incorrect password', ErrorCode.INCORRECT_PASSWORD)    
   }
-  return res.status(401).json({ message: "Invalid credentials" });
+  const token = jwt.sign({
+    user_pk: user.user_pk
+  },JWT_SECRET)
+
+  res.json({user, token})
+  /* return res.status(401).json({ message: "Invalid credentials" }); */
+};
+
+/* me */
+export const me = async (req: Request, res: Response) => {
+  res.json(req.usuario)
 };

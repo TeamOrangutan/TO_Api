@@ -1,22 +1,43 @@
-import { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
+import { NextFunction, Request, Response } from "express";
+import { UnauthorizedException } from "../exceptions/unauthorized";
+import { ErrorCode } from "../exceptions/root";
+import * as jwt from 'jsonwebtoken';
+import { JWT_SECRET } from "../config";
+import { prismaclient } from "..";
 
-interface TokenPayload {
-    username: string;
-    iat: number;
-    exp: number;
-  }
-
-export const verifyToken = (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const token = req.headers["authorization"]?.split(" ")[1];
-        if (!token) {
-            return res.status(401).json({ message: "Access denied, no token provided"});           
-        }
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || "secret") as TokenPayload;
-        req.body.user = decoded;
-        return next();
-    } catch (err) {
-        return res.status(400).json({message: "Invalid token"})
+const authMiddleware = async (req: Request, _res: Response, next: NextFunction) => {
+    try {      
+      const authHeader = req.headers.authorization;
+  
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        console.log("Token no encontrado o formato inválido");
+        return next(new UnauthorizedException("Unauthorized", ErrorCode.UNAUTHORIZED));
+      }
+  
+      const token = authHeader.split(" ")[1];
+  
+      console.log("Token recibido:", token);
+      
+      const payload = jwt.verify(token, JWT_SECRET) as { user_pk: number };
+      console.log("Payload del token:", payload);
+        
+      const user = await prismaclient.usuario.findFirst({
+        where: { user_pk: payload.user_pk },
+      });
+  
+      if (!user) {
+        console.log("Usuario no encontrado en la base de datos");
+        return next(new UnauthorizedException("Unauthorized", ErrorCode.UNAUTHORIZED));
+      }
+  
+      console.log("Usuario autenticado:", user);
+        
+      req.usuario = user as any;
+      next();
+    } catch (error) {
+      console.log("Error en la autenticación:", error);
+      next(new UnauthorizedException("Unauthorized", ErrorCode.UNAUTHORIZED));
     }
-}
+  };
+  
+export default authMiddleware;
