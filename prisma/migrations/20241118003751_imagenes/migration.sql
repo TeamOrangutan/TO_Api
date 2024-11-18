@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "PRODUCTOS" ADD COLUMN     "imagen2" TEXT;

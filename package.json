@@ -1,0 +1,31 @@
+{
+  "name": "test",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node Build/index.js",
+    "dev": "ts-node-dev src/index.ts",
+    "tsc": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "decimal.js": "^10.4.3",
+    "express": "^4.21.1",
+    "express-fileupload": "^1.5.1",
+    "multer": "^1.4.5-lts.1",
+    "typescript": "^5.6.3"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/express-fileupload": "^1.5.1",
+    "@types/multer": "^1.4.12",
+    "prisma": "^5.22.0",
+    "ts-node-dev": "^2.0.0",
+    "zod": "^3.23.8"
+  }
+}

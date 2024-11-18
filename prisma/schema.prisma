@@ -1,0 +1,159 @@
+// prisma/schema.prisma
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model ROL {
+  rol_pk      Int       @id @default(autoincrement())
+  descripcion String
+  usuarios    USUARIO[] // Relación inversa con USUARIO
+}
+
+model USUARIO {
+  usuario_pk Int      @id @default(autoincrement())
+  correo     String   @unique
+  contrasena String
+  rol_fk     Int
+  rol        ROL      @relation(fields: [rol_fk], references: [rol_pk])
+  persona    PERSONA?
+}
+
+model PERSONA {
+  persona_pk    Int             @id @default(autoincrement())
+  nombres       String
+  apellidos     String
+  direccion     String
+  usuario_fk    Int             @unique
+  usuario       USUARIO         @relation(fields: [usuario_fk], references: [usuario_pk])
+  fPagoClientes FPago_CLIENTE[]
+  registros     REGISTRO[] // Relación inversa con REGISTRO
+}
+
+model SERVICIO_BANCARIO {
+  servicio_pk Int          @id @default(autoincrement())
+  nombre      String
+  formasPago  FORMA_PAGO[] // Relación inversa con FORMA_PAGO
+}
+
+model FORMA_PAGO {
+  forma_pk          Int               @id @default(autoincrement())
+  numeroTarjeta     String
+  nombrePropietario String
+  codigo            String
+  fechaExpiracion   DateTime
+  servicio_fk       Int
+  servicio          SERVICIO_BANCARIO @relation(fields: [servicio_fk], references: [servicio_pk])
+  facturas          FACTURA[]         @relation("FacturaFormaPago") // Relación con FACTURA
+  fPagoClientes     FPago_CLIENTE[] // Relación inversa con FPago_CLIENTE
+}
+
+model FACTURA {
+  factura_pk   Int            @id @default(autoincrement())
+  formaPago_fk Int
+  total        Decimal        @default(0)
+  fecha        DateTime?
+  formaPago    FORMA_PAGO     @relation("FacturaFormaPago", fields: [formaPago_fk], references: [forma_pk]) // Relación con FORMA_PAGO
+  facProductos FAC_PRODUCTO[]
+}
+
+model FPago_CLIENTE {
+  fpc_pk     Int        @id @default(autoincrement())
+  forma_fk   Int
+  cliente_fk Int
+  formaPago  FORMA_PAGO @relation(fields: [forma_fk], references: [forma_pk])
+  cliente    PERSONA    @relation(fields: [cliente_fk], references: [persona_pk])
+}
+model PRODUCTOS {
+  producto_pk   Int                @id @default(autoincrement())
+  nombre        String
+  precioVenta   Decimal
+  descripcion   String
+  inventarios   INVENTARIO[] 
+  registros     REGISTRO[] 
+  facProducto   FAC_PRODUCTO[] 
+  serigrafiados PRO_SERIGRAFIADO[] 
+  posters       PRO_POSTERS[] 
+  impresiones   PRO_IMPRESION[] 
+  imagenes      IMAGEN[]           // Relación con la tabla de imágenes
+}
+
+model IMAGEN {
+  imagen_pk   Int      @id @default(autoincrement())
+  producto_fk Int
+  url         String   // Ruta o URL de la imagen
+  producto    PRODUCTOS @relation(fields: [producto_fk], references: [producto_pk]) // Relación con el producto
+}
+
+
+
+model INVENTARIO {
+  costes_pk    Int       @id @default(autoincrement())
+  precioCompra Decimal
+  stock        Int
+  producto_fk  Int
+  producto     PRODUCTOS @relation(fields: [producto_fk], references: [producto_pk])
+}
+
+model REGISTRO {
+  registro_pk      Int       @id @default(autoincrement())
+  fecha            DateTime
+  administrador_fk Int
+  producto_fk      Int
+  administrador    PERSONA   @relation(fields: [administrador_fk], references: [persona_pk])
+  producto         PRODUCTOS @relation(fields: [producto_fk], references: [producto_pk])
+}
+
+model FAC_PRODUCTO {
+  facProducto_pk Int       @id @default(autoincrement())
+  factura_fk     Int
+  producto_fk    Int
+  cantidad       Int
+  factura        FACTURA   @relation(fields: [factura_fk], references: [factura_pk])
+  producto       PRODUCTOS @relation(fields: [producto_fk], references: [producto_pk])
+}
+
+model MATERIAL {
+  material_pk   Int                @id @default(autoincrement())
+  nombre        String
+  serigrafiados PRO_SERIGRAFIADO[] // Relación inversa con PRO_SERIGRAFIADO
+}
+
+model PRO_SERIGRAFIADO {
+  serigrafiado_pk Int       @id @default(autoincrement())
+  color           String
+  tamano          String
+  tipoTinta       String
+  tipoProducto    String
+  material_fk     Int
+  producto_fk     Int
+  material        MATERIAL  @relation(fields: [material_fk], references: [material_pk])
+  producto        PRODUCTOS @relation(fields: [producto_fk], references: [producto_pk])
+}
+
+model PRO_POSTERS {
+  poster_pk        Int       @id @default(autoincrement())
+  dimensiones      String
+  tipoImpresion    String
+  acabado          String
+  tipoPapel        String
+  calidadImpresion String
+  producto_fk      Int
+  producto         PRODUCTOS @relation(fields: [producto_fk], references: [producto_pk])
+}
+
+model PRO_IMPRESION {
+  impresion_pk  Int       @id @default(autoincrement())
+  duracion      String
+  resolucion    String
+  nroFrames     String
+  formato       String
+  tipoAnimacion String
+  producto_fk   Int
+  producto      PRODUCTOS @relation(fields: [producto_fk], references: [producto_pk])
+}
