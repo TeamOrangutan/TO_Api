@@ -32,7 +32,6 @@ model PERSONA {
   usuario_fk    Int             @unique
   usuario       USUARIO         @relation(fields: [usuario_fk], references: [usuario_pk])
   fPagoClientes FPago_CLIENTE[]
-  registros     REGISTRO[] // Relación inversa con REGISTRO
 }
 
 model SERVICIO_BANCARIO {
@@ -103,9 +102,7 @@ model INVENTARIO {
 model REGISTRO {
   registro_pk      Int       @id @default(autoincrement())
   fecha            DateTime
-  administrador_fk Int
   producto_fk      Int
-  administrador    PERSONA   @relation(fields: [administrador_fk], references: [persona_pk])
   producto         PRODUCTOS @relation(fields: [producto_fk], references: [producto_pk])
 }
 

@@ -4,8 +4,12 @@ import { PrismaClient } from '@prisma/client';
 
 import path from 'path';
 import AppProduct from './routes/index';
+import cors from 'cors'
+
 
 const app = express();
+
+app.use(cors())
 
 export const prismaclient = new PrismaClient();
 
