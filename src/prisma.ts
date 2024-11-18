@@ -1,3 +1,3 @@
 import { PrismaClient } from '../node_modules/.prisma/client';
 
-export const prisma = new PrismaClient(); // Asegúrate de exportarlo correctamente
+export const prisma = new PrismaClient();

@@ -3,7 +3,6 @@ import  router  from "../routes/store/store.route";
 
 const AppProduct = express.Router();
 
-// Ruta para crear producto
-AppProduct.post("/products", router);
+AppProduct.use("/products", router);
 
 export default AppProduct;
