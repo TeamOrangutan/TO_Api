@@ -1,36 +1,20 @@
 import express from "express";
 import {
   createProduct,
+  deleteProductById,
   getProductById,
   getProducts,
   updateProductById,
 } from "../../controllers/store/product";
 import path from "path";
-import { prismaclient } from "../../index";
 
 const router = express.Router();
 
 router.post("/", createProduct);
 router.get("/", getProducts);
 router.get('/:id', getProductById)
-router.put("/", updateProductById);
-router.delete("/:id", async (req, res) => {
-  const { id } = req.params;
-
-  if (!id || !Number(id)) throw Error("Id not send");
-
-  await prismaclient.iMAGEN.deleteMany({
-    where: {
-      producto_fk: Number(id)
-    }
-  })  
-  const data = await prismaclient.pRODUCTOS.delete({
-    where: {
-      producto_pk: Number(id),
-    },
-  });
-  res.json(data);
-});
+router.put("/:id", updateProductById);
+router.delete("/:id", deleteProductById);
 
 router.get("/file/uploads/:fileName", function (req, res) {
   const fileName = req.params.fileName;

@@ -111,11 +111,14 @@ export const getProducts = async (_req: Request, res: Response) => {
   }
 };
 
-export const getProductById = async (req: Request, res: Response): Promise<void> => {
+export const getProductById = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   const { id } = req.params;
 
   if (!id || isNaN(Number(id))) {
-    res.status(400).json({ error: 'Invalid ID' });
+    res.status(400).json({ error: "Invalid ID" });
     return;
   }
 
@@ -138,7 +141,7 @@ export const getProductById = async (req: Request, res: Response): Promise<void>
     });
 
     if (!product) {
-      res.status(404).json({ error: 'Product not found' });
+      res.status(404).json({ error: "Product not found" });
       return;
     }
 
@@ -159,59 +162,53 @@ export const getProductById = async (req: Request, res: Response): Promise<void>
     res.json({
       id: product.producto_pk,
       name: product.nombre,
-      path: productImages[0] || '',
-      estado: 'disponible',
+      path: productImages[0] || "",
+      estado: "disponible",
       description: product.descripcion,
       price: product.precioVenta,
-      hoverPath: productImages[1] || '',
+      hoverPath: productImages[1] || "",
       fecha_de_publicacion: publicationDate,
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
-export const updateProductById = async (req: Request, _res: Response) => {
-  const [idProduct, nombre] = req.body;
-
-  const id = Number(idProduct);
-
-  await prismaclient.pRODUCTOS.update({
-    where: {
-      producto_pk: id,
-    },
-    data: {
-      nombre: nombre,
-      precioVenta: 0,
-    },
-  });
-};
-export const deleteProductById = async (_req: Request, _res: Response) => {};
-
-export const deleteProductHandler = async (
-  req: Request,
-  res: Response
-): Promise<Response> => {
+export const updateProductById = async (req: Request, res: Response) => {
+  const { nombre, descripcion, precioVenta } = req.body;
   const { id } = req.params;
-  const parseId = Number(id);
 
   try {
-    const product = await prismaclient.pRODUCTOS.findUnique({
-      where: { producto_pk: parseId },
+    await prismaclient.pRODUCTOS.update({
+      where: {
+        producto_pk: Number(id), 
+      },
+      data: {
+        nombre: nombre, 
+        precioVenta: precioVenta,
+        descripcion: descripcion, 
+      },
     });
-
-    if (!product) {
-      return res.status(404).json({ message: "Producto no encontrado" });
-    }
-
-    const result = await prismaclient.pRODUCTOS.delete({
-      where: { producto_pk: parseId },
-    });
-
-    return res.status(200).json(result);
+    
+    res.status(200).send("Producto actualizado correctamente");
   } catch (error) {
-    console.error("Error al eliminar el producto:", error);
-    return res.status(500).send("Error al eliminar el producto");
+    console.error("Error al actualizar el producto:", error);
+    res.status(500).send("Error interno al actualizar el producto");
   }
+};
+export const deleteProductById = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  await prismaclient.iMAGEN.deleteMany({
+    where: {
+      producto_fk: Number(id),
+    },
+  });
+  const data = await prismaclient.pRODUCTOS.delete({
+    where: {
+      producto_pk: Number(id),
+    },
+  });
+  res.json(data);
 };
