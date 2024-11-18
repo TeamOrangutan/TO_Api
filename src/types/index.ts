@@ -1,5 +1,7 @@
 export interface userI {
     correo: string, 
     contrasena: string, 
-    nombre: string
+    nombre: string, 
+    rol_fk?: number
 }
+
