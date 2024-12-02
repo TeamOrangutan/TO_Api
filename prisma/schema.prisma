@@ -54,10 +54,10 @@ model FORMA_PAGO {
 
 model FACTURA {
   factura_pk   Int            @id @default(autoincrement())
-  formaPago_fk Int
+  formaPago_fk Int?
   total        Decimal        @default(0)
   fecha        DateTime?
-  formaPago    FORMA_PAGO    @relation("FacturaFormaPago", fields: [formaPago_fk], references: [forma_pk]) // Relación con FORMA_PAGO
+  formaPago    FORMA_PAGO?    @relation("FacturaFormaPago", fields: [formaPago_fk], references: [forma_pk])
   facProductos FAC_PRODUCTO[]
 }
 
