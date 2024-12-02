@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { prisma } from "../../prisma";
 import { upload } from "../../utils/multer";
 import { prismaclient } from "../../index";
+
 export const createProduct = (req: Request, res: Response) => {
   upload.array("images", 2)(req, res, async (err) => {
     if (err instanceof Error) {
@@ -19,18 +20,19 @@ export const createProduct = (req: Request, res: Response) => {
         (file) => file.path // file.path te da la ruta donde la imagen fue guardada
       );
 
-      const { nombre, precioVenta, descripcion } = req.body;
+      const { nombre, precioVenta, descripcion, estado } = req.body;
 
       if (!nombre || !precioVenta || !descripcion) {
         return res.status(400).json({ error: "Faltan datos requeridos" });
-      }
-
+      }      
+      
       // Crear el producto
       const producto = await prisma.pRODUCTOS.create({
         data: {
           nombre,
           precioVenta: parseFloat(precioVenta),
           descripcion,
+          estado, 
         },
       });
 
@@ -76,6 +78,7 @@ export const getProducts = async (_req: Request, res: Response) => {
         nombre: true,
         precioVenta: true,
         descripcion: true,
+        estado: true,
         registros: {
           select: {
             fecha: true,
@@ -95,7 +98,7 @@ export const getProducts = async (_req: Request, res: Response) => {
         id: product.producto_pk,
         name: product.nombre,
         path: productImages[0] || "",
-        estado: "disponible",
+        estado: product.estado,
         description: product.descripcion,
         price: product.precioVenta,
         hoverPath: productImages[1] || "",
@@ -132,6 +135,7 @@ export const getProductById = async (
         nombre: true,
         precioVenta: true,
         descripcion: true,
+        estado: true,
         registros: {
           select: {
             fecha: true,
@@ -163,7 +167,7 @@ export const getProductById = async (
       id: product.producto_pk,
       name: product.nombre,
       path: productImages[0] || "",
-      estado: "disponible",
+      estado: product.estado,
       description: product.descripcion,
       price: product.precioVenta,
       hoverPath: productImages[1] || "",
@@ -176,7 +180,7 @@ export const getProductById = async (
 };
 
 export const updateProductById = async (req: Request, res: Response) => {
-  const { nombre, descripcion, precioVenta } = req.body;
+  const { nombre, descripcion, precioVenta, estado } = req.body;
   const { id } = req.params;
 
   try {
@@ -188,6 +192,7 @@ export const updateProductById = async (req: Request, res: Response) => {
         nombre: nombre, 
         precioVenta: precioVenta,
         descripcion: descripcion, 
+        estado: estado,
       },
     });
     
@@ -197,6 +202,7 @@ export const updateProductById = async (req: Request, res: Response) => {
     res.status(500).send("Error interno al actualizar el producto");
   }
 };
+
 export const deleteProductById = async (req: Request, res: Response) => {
   const { id } = req.params;
 

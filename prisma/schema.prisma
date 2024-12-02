@@ -57,7 +57,7 @@ model FACTURA {
   formaPago_fk Int
   total        Decimal        @default(0)
   fecha        DateTime?
-  formaPago    FORMA_PAGO     @relation("FacturaFormaPago", fields: [formaPago_fk], references: [forma_pk]) // Relación con FORMA_PAGO
+  formaPago    FORMA_PAGO    @relation("FacturaFormaPago", fields: [formaPago_fk], references: [forma_pk]) // Relación con FORMA_PAGO
   facProductos FAC_PRODUCTO[]
 }
 
@@ -73,6 +73,7 @@ model PRODUCTOS {
   nombre        String
   precioVenta   Decimal
   descripcion   String
+  estado       String   @default("disponible")
   inventarios   INVENTARIO[] 
   registros     REGISTRO[] 
   facProducto   FAC_PRODUCTO[] 
