@@ -18,7 +18,7 @@ export const createInvoice = async (req: Request, res: Response) => {
 
   const newFactura = await prismaclient.fACTURA.create({
     data: {
-      total: 0.0,
+      total: 0.0,      
     },
   });
 
@@ -61,7 +61,39 @@ export const createInvoice = async (req: Request, res: Response) => {
       total: total,
       fecha: fecha.toISOString(),
     },
-  });
-
+  });  
   res.send(Bill);
+};
+
+export const getSales = async (_req: Request, res: Response) => {
+  try {
+    const fhoy = new Date();
+    
+    const comienzoMes = new Date(fhoy.getFullYear(), fhoy.getMonth(), 1);
+
+    const totalVentas = await prismaclient.fACTURA.aggregate({
+      _sum: {
+        total: true,
+      },
+    });
+
+    const vMensuales = await prismaclient.fACTURA.aggregate({
+      _sum: {
+        total: true,
+      },
+      where: {
+        fecha: {
+          gte: comienzoMes, 
+        },
+      },
+    });
+    
+    res.json({
+      ventasTotales: totalVentas._sum.total,
+      ventasMensuales: vMensuales._sum.total,      
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al obtener las ventas." });
+  }
 };
