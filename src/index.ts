@@ -5,11 +5,12 @@ import { PrismaClient } from '@prisma/client';
 import path from 'path';
 import AppProduct from './routes/index';
 import cors from 'cors'
-
+import morgan from 'morgan'
 
 const app = express();
 
 app.use(cors())
+app.use(morgan('dev'))
 app.use(express.json())
 
 export const prismaclient = new PrismaClient();

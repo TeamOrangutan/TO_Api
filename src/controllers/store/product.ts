@@ -43,7 +43,6 @@ export const createProduct = (req: Request, res: Response) => {
         },
       });
 
-      // Guardar las imágenes asociadas al producto
       await prisma.iMAGEN.createMany({
         data: imagenes.map((imagenUrl) => ({
           producto_fk: producto.producto_pk,

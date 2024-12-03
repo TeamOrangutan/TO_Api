@@ -12,13 +12,13 @@ interface invoiceProps {
 }
 
 export const createInvoice = async (req: Request, res: Response) => {
-  const { productos }: invoiceProps = req.body;
-
+  const { productos, formaPago_fk }: invoiceProps = req.body;
   const productoPKs = productos.map((producto) => producto.producto_pk);
 
   const newFactura = await prismaclient.fACTURA.create({
     data: {
       total: 0.0,
+      formaPago_fk: formaPago_fk! ? null : formaPago_fk,
     },
   });
 
@@ -64,4 +64,64 @@ export const createInvoice = async (req: Request, res: Response) => {
   });
 
   res.send(Bill);
+};
+
+export const getInvoices = async (_req: Request, res: Response) => {
+  const data = await prismaclient.fACTURA.findMany({
+    select: {
+      fecha: true,
+      total: true,
+      formaPago: {
+        select: {
+          fPagoClientes: {
+            select: {
+              formaPago: {
+                select: {
+                  servicio: {
+                    select: {
+                      nombre: true,
+                    },
+                  },
+                },
+              },
+              cliente: {
+                select: {
+                  nombres: true,
+                  usuario: {
+                    select: {
+                      correo: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const fecha = new  Date()
+  const formatData = data.map((data) => ({
+    date: fecha.toLocaleDateString() ,
+    hour: fecha.toLocaleTimeString(),
+    total: data.total,
+    paymentMethod: data.formaPago?.fPagoClientes.map((fpago) => {
+      fpago.formaPago.servicio.nombre;
+    }) ? data.formaPago?.fPagoClientes.map((fpago) => {
+      fpago.formaPago.servicio.nombre;
+    }): 'Efectivo',
+    email: data.formaPago?.fPagoClientes.map(
+      (fpago) => fpago.cliente.usuario.correo
+    )
+      ? data.formaPago?.fPagoClientes.map(
+          (fpago) => fpago.cliente.usuario.correo
+        )
+      : "Test@gmail.com",
+    name: data.formaPago?.fPagoClientes.map((fpago) => fpago.cliente.nombres)
+      ? data.formaPago?.fPagoClientes.map((fpago) => fpago.cliente.nombres)
+      : "Usuario Defecto",
+  }));
+
+  res.json(formatData);
 };
