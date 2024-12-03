@@ -1,9 +1,10 @@
 import { Router } from "express";
-import { createInvoice, getInvoices } from "../../controllers/store/invoice";
+import { createInvoice, getInvoiceDetails, getInvoices } from "../../controllers/store/invoice";
 
 const Invoicerouter = Router();
 
 Invoicerouter.post("/", createInvoice);
 Invoicerouter.get("/", getInvoices);
+Invoicerouter.get("/:id", getInvoiceDetails);
 
 export default Invoicerouter;
