@@ -68,29 +68,28 @@ model FPago_CLIENTE {
   formaPago  FORMA_PAGO @relation(fields: [forma_fk], references: [forma_pk])
   cliente    PERSONA    @relation(fields: [cliente_fk], references: [persona_pk])
 }
+
 model PRODUCTOS {
   producto_pk   Int                @id @default(autoincrement())
   nombre        String
   precioVenta   Decimal
   descripcion   String
-  estado       String   @default("disponible")
-  inventarios   INVENTARIO[] 
-  registros     REGISTRO[] 
-  facProducto   FAC_PRODUCTO[] 
-  serigrafiados PRO_SERIGRAFIADO[] 
-  posters       PRO_POSTERS[] 
-  impresiones   PRO_IMPRESION[] 
-  imagenes      IMAGEN[]           // Relación con la tabla de imágenes
+  estado        String             @default("disponible")
+  inventarios   INVENTARIO[]
+  registros     REGISTRO[]
+  facProducto   FAC_PRODUCTO[]
+  serigrafiados PRO_SERIGRAFIADO[]
+  posters       PRO_POSTERS[]
+  impresiones   PRO_IMPRESION[]
+  imagenes      IMAGEN[] // Relación con la tabla de imágenes
 }
 
 model IMAGEN {
-  imagen_pk   Int      @id @default(autoincrement())
+  imagen_pk   Int       @id @default(autoincrement())
   producto_fk Int
-  url         String   // Ruta o URL de la imagen
+  url         String // Ruta o URL de la imagen
   producto    PRODUCTOS @relation(fields: [producto_fk], references: [producto_pk]) // Relación con el producto
 }
-
-
 
 model INVENTARIO {
   costes_pk    Int       @id @default(autoincrement())
@@ -101,10 +100,10 @@ model INVENTARIO {
 }
 
 model REGISTRO {
-  registro_pk      Int       @id @default(autoincrement())
-  fecha            DateTime
-  producto_fk      Int
-  producto         PRODUCTOS @relation(fields: [producto_fk], references: [producto_pk])
+  registro_pk Int       @id @default(autoincrement())
+  fecha       DateTime
+  producto_fk Int
+  producto    PRODUCTOS @relation(fields: [producto_fk], references: [producto_pk])
 }
 
 model FAC_PRODUCTO {
@@ -112,6 +111,7 @@ model FAC_PRODUCTO {
   factura_fk     Int
   producto_fk    Int
   cantidad       Int
+  subTotal        Decimal
   factura        FACTURA   @relation(fields: [factura_fk], references: [factura_pk])
   producto       PRODUCTOS @relation(fields: [producto_fk], references: [producto_pk])
 }

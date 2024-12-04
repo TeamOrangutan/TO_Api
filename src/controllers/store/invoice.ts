@@ -12,7 +12,7 @@ interface invoiceProps {
 }
 
 export const createInvoice = async (req: Request, res: Response) => {
-  const { productos, formaPago_fk }: invoiceProps = req.body;
+  const { productos, formaPago_fk}: invoiceProps = req.body;
   const productoPKs = productos.map((producto) => producto.producto_pk);
 
   const newFactura = await prismaclient.fACTURA.create({
@@ -45,11 +45,12 @@ export const createInvoice = async (req: Request, res: Response) => {
     cantidad: producto.cantidad,
     producto_fk: producto.producto_pk,
     factura_fk: newFactura.factura_pk,
-    subTotal: 0,
+    subTotal: 0
   }));
 
   await prismaclient.fAC_PRODUCTO.createMany({
-    data: producto,
+    data: producto
+  
   });
 
   const fecha = new Date();
@@ -70,6 +71,11 @@ export const createInvoice = async (req: Request, res: Response) => {
 export const getInvoices = async (_req: Request, res: Response) => {
   const data = await prismaclient.fACTURA.findMany({
     select: {
+      facProductos: {
+        select: {
+          facProducto_pk: true
+        }
+      },
       fecha: true,
       total: true,
       formaPago: {
@@ -185,4 +191,29 @@ export const getSales = async (_req: Request, res: Response) => {
     console.error(error);
     res.status(500).json({ error: "Error al obtener las ventas." });
   }
+};
+
+export const getInvoiceDetails = async ( req: Request ,  res: Response) => {
+  const {id} = req.params;
+
+  const data = prismaclient.fAC_PRODUCTO.findMany({
+    select: {
+      cantidad: true, 
+      factura: {
+        select: {
+          total: true, 
+        }
+      }, 
+      producto: {
+        select: {
+          precioVenta: true, 
+          nombre: true,
+        }
+      }
+    }, 
+    where: {
+      facProducto_pk: Number(id)
+    }
+  })
+  res.json(data);
 };
