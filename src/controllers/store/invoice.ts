@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { prismaclient } from "../../index";
+import Decimal from "decimal.js";
 
 interface invoiceProps {
   productos: [
@@ -130,24 +131,24 @@ export const getInvoices = async (_req: Request, res: Response) => {
 
   res.json(formatData);
 };
-
 export const getSales = async (_req: Request, res: Response) => {
   try {
     const fhoy = new Date();
 
-    const comienzoMes = new Date(fhoy.getFullYear(), fhoy.getMonth(), 1);
-
+    const comienzoMes = new Date(fhoy.getFullYear(), fhoy.getMonth(), 1);    
+    const comienzoMesAnterior = new Date(fhoy.getFullYear(), fhoy.getMonth() - 1, 1);
+    
     const sem = new Date(fhoy);
     sem.setDate(fhoy.getDate() - fhoy.getDay());
 
     const vhoy = new Date(fhoy.setHours(0, 0, 0, 0));
-
+    
     const totalVentas = await prismaclient.fACTURA.aggregate({
       _sum: {
         total: true,
       },
     });
-
+    
     const vMensuales = await prismaclient.fACTURA.aggregate({
       _sum: {
         total: true,
@@ -158,7 +159,19 @@ export const getSales = async (_req: Request, res: Response) => {
         },
       },
     });
-
+    
+    const vMensualesAnterior = await prismaclient.fACTURA.aggregate({
+      _sum: {
+        total: true,
+      },
+      where: {
+        fecha: {
+          gte: comienzoMesAnterior,
+          lt: comienzoMes, 
+        },
+      },
+    });
+    
     const vSem = await prismaclient.fACTURA.aggregate({
       _sum: {
         total: true,
@@ -169,6 +182,7 @@ export const getSales = async (_req: Request, res: Response) => {
         },
       },
     });
+    
     const vHoy = await prismaclient.fACTURA.aggregate({
       _sum: {
         total: true,
@@ -179,9 +193,23 @@ export const getSales = async (_req: Request, res: Response) => {
         },
       },
     });
+
+    // paraconvertir Decimal a number o 0 si es null
+    const toNumber = (value: Decimal | null): number => {
+      return value ? parseFloat(value.toString()) : 0;
+    };
+
+    // diferencia margen de ganancia/prdida 
+    const diferenciaMes = toNumber(vMensuales._sum.total) - toNumber(vMensualesAnterior._sum.total);
+
+    const porcentajeDiferencia = toNumber(vMensualesAnterior._sum.total) !== 0
+      ? (diferenciaMes / toNumber(vMensualesAnterior._sum.total)) * 100 : 0; 
+
     res.json({
       ventasTotales: totalVentas._sum.total ? totalVentas._sum.total : '00,000.00',
       ventasMensuales: vMensuales._sum.total ? vMensuales._sum.total : '00,000.00',
+      ventasMesAnterior: vMensualesAnterior._sum.total ? vMensualesAnterior._sum.total : '00,000.00',      
+      porcentajeDiferencia: `${porcentajeDiferencia.toFixed(2)}%`,
       ventasSemana: vSem._sum.total ? vSem._sum.total : '00,000.00',
       ventasHoy: vHoy._sum.total ? vHoy._sum.total : '00,000.00',
     });
@@ -190,6 +218,7 @@ export const getSales = async (_req: Request, res: Response) => {
     res.status(500).json({ error: "Error al obtener las ventas." });
   }
 };
+
 
 export const getInvoiceDetails = async ( req: Request ,  res: Response) => {
   const {id} = req.params;

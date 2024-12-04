@@ -1,7 +1,19 @@
 import { Request, Response } from "express";
-import { prisma } from "../../prisma";
 import { upload } from "../../utils/multer";
 import { prismaclient } from "../../index";
+
+interface Talla {
+  nombre: string;
+  cantidad: number;
+}
+
+interface Product {
+  nombre: string;
+  descripcion: string;
+  precioVenta: number;
+  estado: string;
+  tallas: Talla[];
+}
 
 export const createProduct = (req: Request, res: Response) => {
   // Middleware de multer para manejar múltiples imágenes (máximo 10)
@@ -20,15 +32,23 @@ export const createProduct = (req: Request, res: Response) => {
     try {
       // Validar si se subieron imágenes
       if (!req.files || !Array.isArray(req.files) || req.files.length === 0) {
-        return res.status(400).json({ error: "Se deben subir al menos una imagen." });
+        return res
+          .status(400)
+          .json({ error: "Se deben subir al menos una imagen." });
       }
 
       // Validar que los archivos sean imágenes
-      const validImageTypes = ['image/jpeg', 'image/png', 'image/gif']; 
-      const invalidFiles = req.files.filter((file: any) => !validImageTypes.includes(file.mimetype));
+      const validImageTypes = ["image/jpeg", "image/png", "image/gif"];
+      const invalidFiles = req.files.filter(
+        (file: any) => !validImageTypes.includes(file.mimetype)
+      );
 
       if (invalidFiles.length > 0) {
-        return res.status(400).json({ error: "Solo se permiten archivos de imagen (JPG, PNG, GIF)." });
+        return res
+          .status(400)
+          .json({
+            error: "Solo se permiten archivos de imagen (JPG, PNG, GIF).",
+          });
       }
 
       // Obtener las rutas de las imágenes subidas
@@ -36,6 +56,8 @@ export const createProduct = (req: Request, res: Response) => {
 
       // Extraer datos del cuerpo de la solicitud
       const { nombre, precioVenta, descripcion, estado, tallas } = req.body;
+
+      console.log(tallas);
 
       // Validar que los datos requeridos estén presentes
       if (!nombre || !precioVenta || !descripcion || !tallas) {
@@ -46,22 +68,28 @@ export const createProduct = (req: Request, res: Response) => {
       try {
         tallasData = JSON.parse(tallas);
       } catch (error) {
-        return res.status(400).json({ error: "El campo 'tallas' debe ser un JSON válido." });
+        return res
+          .status(400)
+          .json({ error: "El campo 'tallas' debe ser un JSON válido." });
       }
 
       if (!Array.isArray(tallasData)) {
-        return res.status(400).json({ error: "El campo 'tallas' debe ser un arreglo." });
+        return res
+          .status(400)
+          .json({ error: "El campo 'tallas' debe ser un arreglo." });
       }
 
       // Validar que cada talla tenga 'nombre' y 'cantidad'
       for (let talla of tallasData) {
         if (!talla.nombre || !talla.cantidad) {
-          return res.status(400).json({ error: "Cada talla debe tener un nombre y una cantidad." });
+          return res
+            .status(400)
+            .json({ error: "Cada talla debe tener un nombre y una cantidad." });
         }
       }
 
       // Crear el producto en la base de datos
-      const producto = await prisma.pRODUCTOS.create({
+      const producto = await prismaclient.pRODUCTOS.create({
         data: {
           nombre,
           precioVenta: parseFloat(precioVenta),
@@ -78,21 +106,24 @@ export const createProduct = (req: Request, res: Response) => {
       }));
 
       // Crear las tallas asociadas al producto
-      await prisma.tALLA.createMany({
+      await prismaclient.tALLA.createMany({
         data: tallasRecords,
       });
 
       // Registrar en INVENTARIO con los datos iniciales
-      await prisma.iNVENTARIO.create({
+      await prismaclient.iNVENTARIO.create({
         data: {
           precioCompra: 0, // Suponiendo que no tienes un precio de compra al crear
-          stock: tallasRecords.reduce((total: number, talla: any) => total + talla.cantidad, 0),
+          stock: tallasRecords.reduce(
+            (total: number, talla: any) => total + talla.cantidad,
+            0
+          ),
           producto_fk: producto.producto_pk,
         },
       });
 
       // Registrar las imágenes asociadas al producto
-      await prisma.iMAGEN.createMany({
+      await prismaclient.iMAGEN.createMany({
         data: imagenes.map((url) => ({
           url,
           producto_fk: producto.producto_pk,
@@ -100,7 +131,7 @@ export const createProduct = (req: Request, res: Response) => {
       });
 
       // Registrar el producto en la tabla REGISTRO
-      await prisma.rEGISTRO.create({
+      await prismaclient.rEGISTRO.create({
         data: {
           producto_fk: producto.producto_pk,
           fecha: new Date(),
@@ -108,8 +139,8 @@ export const createProduct = (req: Request, res: Response) => {
       });
 
       // Obtener las tallas asociadas al producto
-      const tallasRegistradas = await prisma.tALLA.findMany({
-        where: { producto_fk: producto.producto_pk }
+      const tallasRegistradas = await prismaclient.tALLA.findMany({
+        where: { producto_fk: producto.producto_pk },
       });
 
       // Enviar la respuesta exitosa
@@ -117,13 +148,15 @@ export const createProduct = (req: Request, res: Response) => {
         message: "Producto creado con éxito",
         data: {
           ...producto,
-          tallas: tallasRegistradas,  // Incluir las tallas en la respuesta
+          tallas: tallasRegistradas, // Incluir las tallas en la respuesta
         },
         imagenes, // Incluir las imágenes asociadas al producto
       });
     } catch (error) {
       console.error("Error al crear producto:", error);
-      return res.status(500).json({ error: "Error interno al crear el producto." });
+      return res
+        .status(500)
+        .json({ error: "Error interno al crear el producto." });
     }
   });
 };
@@ -193,7 +226,7 @@ export const getProductById = async (
   }
 
   try {
-    const product = await prisma.pRODUCTOS.findFirst({
+    const product = await prismaclient.pRODUCTOS.findFirst({
       where: {
         producto_pk: Number(id),
       },
@@ -202,6 +235,7 @@ export const getProductById = async (
         nombre: true,
         precioVenta: true,
         descripcion: true,
+        tallas: true,
         estado: true,
         registros: {
           select: {
@@ -216,7 +250,7 @@ export const getProductById = async (
       return;
     }
 
-    const imagedata = await prisma.iMAGEN.findMany({
+    const imagedata = await prismaclient.iMAGEN.findMany({
       select: {
         producto_fk: true,
         url: true,
@@ -239,6 +273,7 @@ export const getProductById = async (
       price: product.precioVenta,
       hoverPath: productImages[1] || "",
       fecha_de_publicacion: publicationDate,
+      stock: product.tallas,
     });
   } catch (error) {
     console.error(error);
@@ -247,22 +282,42 @@ export const getProductById = async (
 };
 
 export const updateProductById = async (req: Request, res: Response) => {
-  const { nombre, descripcion, precioVenta, estado } = req.body;
+  const { nombre, descripcion, precioVenta, estado, tallas }: Product =
+    req.body;
   const { id } = req.params;
 
+  console.log(tallas);
+
   try {
-    await prismaclient.pRODUCTOS.update({
+    await prismaclient.pRODUCTOS.updateMany({
       where: {
-        producto_pk: Number(id), 
+        producto_pk: Number(id),
       },
       data: {
-        nombre: nombre, 
-        precioVenta: precioVenta,
-        descripcion: descripcion, 
+        nombre: nombre,
+        precioVenta: Number(precioVenta),
+        descripcion: descripcion ,
         estado: estado,
       },
     });
+
+
+    const tallaData = (tallas || []).map((talla) => ({
+      nombre: talla.nombre,
+      cantidad: Number(talla.cantidad),
+      producto_fk: Number(id)
+    }));
     
+    await prismaclient.tALLA.deleteMany({
+      where: {
+        producto_fk: Number(id)
+      }
+    });
+    
+    await prismaclient.tALLA.createMany({
+      data: tallaData
+    })
+
     res.status(200).send("Producto actualizado correctamente");
   } catch (error) {
     console.error("Error al actualizar el producto:", error);
@@ -280,16 +335,16 @@ export const deleteProductById = async (req: Request, res: Response) => {
   });
   await prismaclient.fAC_PRODUCTO.deleteMany({
     where: {
-      producto_fk: Number(id), 
+      producto_fk: Number(id),
     },
   });
 
-await prismaclient.rEGISTRO.deleteMany({
+  await prismaclient.rEGISTRO.deleteMany({
     where: {
-      producto_fk: Number(id), 
+      producto_fk: Number(id),
     },
   });
-  
+
   const data = await prismaclient.pRODUCTOS.delete({
     where: {
       producto_pk: Number(id),

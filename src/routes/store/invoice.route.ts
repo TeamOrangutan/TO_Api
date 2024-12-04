@@ -8,6 +8,5 @@ Invoicerouter.post("/", createInvoice);
 Invoicerouter.get("/", getInvoices);
 Invoicerouter.get('/Sales', getSales);
 Invoicerouter.get("/:id", getInvoiceDetails);
-Invoicerouter.get("/", getSales);
 
 export default Invoicerouter;
