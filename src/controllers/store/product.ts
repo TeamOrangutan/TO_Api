@@ -210,10 +210,23 @@ export const deleteProductById = async (req: Request, res: Response) => {
       producto_fk: Number(id),
     },
   });
+  await prismaclient.fAC_PRODUCTO.deleteMany({
+    where: {
+      producto_fk: Number(id), 
+    },
+  });
+
+await prismaclient.rEGISTRO.deleteMany({
+    where: {
+      producto_fk: Number(id), 
+    },
+  });
+  
   const data = await prismaclient.pRODUCTOS.delete({
     where: {
       producto_pk: Number(id),
     },
   });
+
   res.json(data);
 };

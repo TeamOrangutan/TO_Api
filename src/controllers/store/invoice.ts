@@ -45,6 +45,7 @@ export const createInvoice = async (req: Request, res: Response) => {
     cantidad: producto.cantidad,
     producto_fk: producto.producto_pk,
     factura_fk: newFactura.factura_pk,
+    subTotal: 0,
   }));
 
   await prismaclient.fAC_PRODUCTO.createMany({
@@ -124,4 +125,64 @@ export const getInvoices = async (_req: Request, res: Response) => {
   }));
 
   res.json(formatData);
+};
+
+export const getSales = async (_req: Request, res: Response) => {
+  try {
+    const fhoy = new Date();
+
+    const comienzoMes = new Date(fhoy.getFullYear(), fhoy.getMonth(), 1);
+
+    const sem = new Date(fhoy);
+    sem.setDate(fhoy.getDate() - fhoy.getDay());
+
+    const vhoy = new Date(fhoy.setHours(0, 0, 0, 0));
+
+    const totalVentas = await prismaclient.fACTURA.aggregate({
+      _sum: {
+        total: true,
+      },
+    });
+
+    const vMensuales = await prismaclient.fACTURA.aggregate({
+      _sum: {
+        total: true,
+      },
+      where: {
+        fecha: {
+          gte: comienzoMes,
+        },
+      },
+    });
+
+    const vSem = await prismaclient.fACTURA.aggregate({
+      _sum: {
+        total: true,
+      },
+      where: {
+        fecha: {
+          gte: sem,
+        },
+      },
+    });
+    const vHoy = await prismaclient.fACTURA.aggregate({
+      _sum: {
+        total: true,
+      },
+      where: {
+        fecha: {
+          gte: vhoy,
+        },
+      },
+    });
+    res.json({
+      ventasTotales: totalVentas._sum.total ? totalVentas._sum.total : '00,000.00',
+      ventasMensuales: vMensuales._sum.total ? vMensuales._sum.total : '00,000.00',
+      ventasSemana: vSem._sum.total ? vSem._sum.total : '00,000.00',
+      ventasHoy: vHoy._sum.total ? vHoy._sum.total : '00,000.00',
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al obtener las ventas." });
+  }
 };
