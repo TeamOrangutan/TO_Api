@@ -12,13 +12,12 @@ interface invoiceProps {
 }
 
 export const createInvoice = async (req: Request, res: Response) => {
-  const { productos, formaPago_fk}: invoiceProps = req.body;
+  const { productos}: invoiceProps = req.body;
   const productoPKs = productos.map((producto) => producto.producto_pk);
 
   const newFactura = await prismaclient.fACTURA.create({
     data: {
-      total: 0.0,
-      formaPago_fk: formaPago_fk! ? null : formaPago_fk,
+      total: 0.0,      
     },
   });
 
@@ -63,8 +62,7 @@ export const createInvoice = async (req: Request, res: Response) => {
       total: total,
       fecha: fecha.toISOString(),
     },
-  });
-
+  });  
   res.send(Bill);
 };
 

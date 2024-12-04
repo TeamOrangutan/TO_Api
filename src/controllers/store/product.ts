@@ -4,38 +4,102 @@ import { upload } from "../../utils/multer";
 import { prismaclient } from "../../index";
 
 export const createProduct = (req: Request, res: Response) => {
-  upload.array("images", 2)(req, res, async (err) => {
-    if (err instanceof Error) {
-      return res.status(400).json({ error: err.message });
+  // Middleware de multer para manejar múltiples imágenes (máximo 10)
+  upload.array("images", 10)(req, res, async (err) => {
+    if (err) {
+      if (err instanceof Error) {
+        return res.status(400).json({ error: err.message });
+      }
+      return res.status(400).json({ error: "Error al subir las imágenes." });
     }
 
+    // Agregar estos console.log para depurar
+    console.log("Headers:", req.headers); // Muestra las cabeceras de la solicitud
+    console.log("Files:", req.files); // Muestra los archivos subidos
+
     try {
-      // Asegúrate de que se hayan subido al menos dos imágenes
-      if (Array.isArray(req.files) && req.files.length < 2) {
-        return res.status(400).json({ error: "Debes subir dos imágenes." });
+      // Validar si se subieron imágenes
+      if (!req.files || !Array.isArray(req.files) || req.files.length === 0) {
+        return res.status(400).json({ error: "Se deben subir al menos una imagen." });
+      }
+
+      // Validar que los archivos sean imágenes
+      const validImageTypes = ['image/jpeg', 'image/png', 'image/gif']; 
+      const invalidFiles = req.files.filter((file: any) => !validImageTypes.includes(file.mimetype));
+
+      if (invalidFiles.length > 0) {
+        return res.status(400).json({ error: "Solo se permiten archivos de imagen (JPG, PNG, GIF)." });
       }
 
       // Obtener las rutas de las imágenes subidas
-      const imagenes = (req.files as Express.Multer.File[]).map(
-        (file) => file.path // file.path te da la ruta donde la imagen fue guardada
-      );
+      const imagenes = req.files.map((file: Express.Multer.File) => file.path);
 
-      const { nombre, precioVenta, descripcion, estado } = req.body;
+      // Extraer datos del cuerpo de la solicitud
+      const { nombre, precioVenta, descripcion, estado, tallas } = req.body;
 
-      if (!nombre || !precioVenta || !descripcion) {
-        return res.status(400).json({ error: "Faltan datos requeridos" });
-      }      
-      
-      // Crear el producto
+      // Validar que los datos requeridos estén presentes
+      if (!nombre || !precioVenta || !descripcion || !tallas) {
+        return res.status(400).json({ error: "Faltan datos requeridos." });
+      }
+
+      let tallasData;
+      try {
+        tallasData = JSON.parse(tallas);
+      } catch (error) {
+        return res.status(400).json({ error: "El campo 'tallas' debe ser un JSON válido." });
+      }
+
+      if (!Array.isArray(tallasData)) {
+        return res.status(400).json({ error: "El campo 'tallas' debe ser un arreglo." });
+      }
+
+      // Validar que cada talla tenga 'nombre' y 'cantidad'
+      for (let talla of tallasData) {
+        if (!talla.nombre || !talla.cantidad) {
+          return res.status(400).json({ error: "Cada talla debe tener un nombre y una cantidad." });
+        }
+      }
+
+      // Crear el producto en la base de datos
       const producto = await prisma.pRODUCTOS.create({
         data: {
           nombre,
           precioVenta: parseFloat(precioVenta),
           descripcion,
-          estado, 
+          estado: estado || "disponible", // Estado por defecto
         },
       });
 
+      // Procesar las tallas
+      const tallasRecords = tallasData.map((talla: any) => ({
+        nombre: talla.nombre,
+        cantidad: talla.cantidad,
+        producto_fk: producto.producto_pk,
+      }));
+
+      // Crear las tallas asociadas al producto
+      await prisma.tALLA.createMany({
+        data: tallasRecords,
+      });
+
+      // Registrar en INVENTARIO con los datos iniciales
+      await prisma.iNVENTARIO.create({
+        data: {
+          precioCompra: 0, // Suponiendo que no tienes un precio de compra al crear
+          stock: tallasRecords.reduce((total: number, talla: any) => total + talla.cantidad, 0),
+          producto_fk: producto.producto_pk,
+        },
+      });
+
+      // Registrar las imágenes asociadas al producto
+      await prisma.iMAGEN.createMany({
+        data: imagenes.map((url) => ({
+          url,
+          producto_fk: producto.producto_pk,
+        })),
+      });
+
+      // Registrar el producto en la tabla REGISTRO
       await prisma.rEGISTRO.create({
         data: {
           producto_fk: producto.producto_pk,
@@ -43,19 +107,23 @@ export const createProduct = (req: Request, res: Response) => {
         },
       });
 
-      await prisma.iMAGEN.createMany({
-        data: imagenes.map((imagenUrl) => ({
-          producto_fk: producto.producto_pk,
-          url: imagenUrl,
-        })),
+      // Obtener las tallas asociadas al producto
+      const tallasRegistradas = await prisma.tALLA.findMany({
+        where: { producto_fk: producto.producto_pk }
       });
 
-      return res
-        .status(201)
-        .json({ message: "Producto creado", data: producto });
+      // Enviar la respuesta exitosa
+      return res.status(201).json({
+        message: "Producto creado con éxito",
+        data: {
+          ...producto,
+          tallas: tallasRegistradas,  // Incluir las tallas en la respuesta
+        },
+        imagenes, // Incluir las imágenes asociadas al producto
+      });
     } catch (error) {
-      console.error(error);
-      return res.status(500).json({ error: "Error al crear el producto" });
+      console.error("Error al crear producto:", error);
+      return res.status(500).json({ error: "Error interno al crear el producto." });
     }
   });
 };

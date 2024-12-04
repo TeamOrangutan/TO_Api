@@ -8,7 +8,6 @@ datasource db {
 generator client {
   provider = "prisma-client-js"
 }
-
 model ROL {
   rol_pk      Int       @id @default(autoincrement())
   descripcion String
@@ -31,7 +30,7 @@ model PERSONA {
   direccion     String
   usuario_fk    Int             @unique
   usuario       USUARIO         @relation(fields: [usuario_fk], references: [usuario_pk])
-  fPagoClientes FPago_CLIENTE[]
+  fPagoClientes FPago_CLIENTE[] 
 }
 
 model SERVICIO_BANCARIO {
@@ -58,7 +57,7 @@ model FACTURA {
   total        Decimal        @default(0)
   fecha        DateTime?
   formaPago    FORMA_PAGO?    @relation("FacturaFormaPago", fields: [formaPago_fk], references: [forma_pk])
-  facProductos FAC_PRODUCTO[]
+  facProductos FAC_PRODUCTO[] 
 }
 
 model FPago_CLIENTE {
@@ -74,14 +73,23 @@ model PRODUCTOS {
   nombre        String
   precioVenta   Decimal
   descripcion   String
-  estado        String             @default("disponible")
-  inventarios   INVENTARIO[]
-  registros     REGISTRO[]
-  facProducto   FAC_PRODUCTO[]
-  serigrafiados PRO_SERIGRAFIADO[]
-  posters       PRO_POSTERS[]
-  impresiones   PRO_IMPRESION[]
-  imagenes      IMAGEN[] // Relación con la tabla de imágenes
+  estado        String   @default("disponible")
+  tallas        TALLA[]  // Relación con las tallas
+  inventarios   INVENTARIO[] 
+  registros     REGISTRO[] 
+  facProducto   FAC_PRODUCTO[] 
+  serigrafiados PRO_SERIGRAFIADO[] 
+  posters       PRO_POSTERS[] 
+  impresiones   PRO_IMPRESION[] 
+  imagenes      IMAGEN[]           
+}
+
+model TALLA {
+  talla_pk      Int       @id @default(autoincrement())  // Identificador único para la talla
+  nombre        String    // Nombre de la talla (ej. S, M, L, XL)
+  cantidad      Int       // Cantidad disponible para esta talla
+  producto_fk   Int       // Relación con el producto
+  producto      PRODUCTOS @relation(fields: [producto_fk], references: [producto_pk])  // Relación con PRODUCTOS
 }
 
 model IMAGEN {
