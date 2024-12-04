@@ -12,13 +12,12 @@ interface invoiceProps {
 }
 
 export const createInvoice = async (req: Request, res: Response) => {
-  const { productos, formaPago_fk}: invoiceProps = req.body;
+  const { productos}: invoiceProps = req.body;
   const productoPKs = productos.map((producto) => producto.producto_pk);
 
   const newFactura = await prismaclient.fACTURA.create({
     data: {
-      total: 0.0,
-      formaPago_fk: formaPago_fk! ? null : formaPago_fk,
+      total: 0.0,      
     },
   });
 
@@ -63,8 +62,7 @@ export const createInvoice = async (req: Request, res: Response) => {
       total: total,
       fecha: fecha.toISOString(),
     },
-  });
-
+  });  
   res.send(Bill);
 };
 
@@ -157,4 +155,63 @@ export const getInvoiceDetails = async ( req: Request ,  res: Response) => {
     }
   })
   res.json(data);
+};
+export const getSales = async (_req: Request, res: Response) => {
+  try {
+    const fhoy = new Date();
+
+    const comienzoMes = new Date(fhoy.getFullYear(), fhoy.getMonth(), 1);
+
+    const sem = new Date(fhoy);
+    sem.setDate(fhoy.getDate() - fhoy.getDay());
+
+    const vhoy = new Date(fhoy.setHours(0, 0, 0, 0));
+
+    const totalVentas = await prismaclient.fACTURA.aggregate({
+      _sum: {
+        total: true,
+      },
+    });
+    
+    const vMensuales = await prismaclient.fACTURA.aggregate({
+      _sum: {
+        total: true,
+      },
+      where: {
+        fecha: {
+          gte: comienzoMes, 
+        },
+      },
+    });
+
+    const vSem = await prismaclient.fACTURA.aggregate({
+      _sum: {
+        total: true,
+      },
+      where: {
+        fecha: {
+          gte: sem,
+        },
+      },
+    });
+    const vHoy = await prismaclient.fACTURA.aggregate({
+      _sum: {
+        total: true,
+      },
+      where: {
+        fecha: {
+          gte: vhoy, 
+        },
+      },
+    });
+    res.json({
+      ventasTotales: totalVentas._sum.total,   
+      ventasMensuales: vMensuales._sum.total,
+      ventasSemana: vSem._sum.total,
+      ventasHoy: vHoy._sum.total
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al obtener las ventas." });
+  }
 };
