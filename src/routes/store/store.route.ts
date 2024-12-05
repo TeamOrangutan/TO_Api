@@ -2,6 +2,7 @@ import express from "express";
 import {
   createProduct,
   deleteProductById,
+  getListProducts,
   getProductById,
   getProducts,
   updateProductById,
@@ -11,6 +12,7 @@ import path from "path";
 const router = express.Router();
 
 router.post("/", createProduct);
+router.get('/list', getListProducts)
 router.get("/", getProducts);
 router.get('/:id', getProductById)
 router.put("/:id", updateProductById);

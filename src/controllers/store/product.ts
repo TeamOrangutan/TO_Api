@@ -353,3 +353,32 @@ export const deleteProductById = async (req: Request, res: Response) => {
 
   res.json(data);
 };
+
+
+export const getListProducts =  async (_req: Request, res: Response) => {
+  const data = await prismaclient.pRODUCTOS.findMany({
+    select: {
+      producto_pk: true,
+      nombre: true, 
+      precioVenta: true,
+      tallas: {
+        select: {
+          nombre: true, 
+          cantidad: true
+        }
+      }
+    }
+  })
+
+
+  const ParseData = data.map((data) => ({
+    producto_pk: data.producto_pk,
+    name: data.nombre, 
+    price: data.precioVenta, 
+    sizes: data.tallas.map((talla) => ({
+      name: talla.nombre, 
+      quantity: talla.cantidad
+    }))
+  }))
+  res.send(ParseData);
+}
