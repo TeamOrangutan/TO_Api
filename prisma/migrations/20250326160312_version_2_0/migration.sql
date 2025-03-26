@@ -1,0 +1,9 @@
+-- DropForeignKey
+ALTER TABLE "CARRITO" DROP CONSTRAINT "CARRITO_usuario_fk_fkey";
+
+-- AlterTable
+ALTER TABLE "CARRITO" ADD COLUMN     "guestId" TEXT,
+ALTER COLUMN "usuario_fk" DROP NOT NULL;
+
+-- AddForeignKey
+ALTER TABLE "CARRITO" ADD CONSTRAINT "CARRITO_usuario_fk_fkey" FOREIGN KEY ("usuario_fk") REFERENCES "USUARIO"("usuario_pk") ON DELETE SET NULL ON UPDATE CASCADE;

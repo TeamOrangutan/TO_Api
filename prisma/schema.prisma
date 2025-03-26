@@ -1,5 +1,3 @@
-// prisma/schema.prisma
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -8,6 +6,7 @@ datasource db {
 generator client {
   provider = "prisma-client-js"
 }
+
 model ROL {
   rol_pk      Int       @id @default(autoincrement())
   descripcion String
@@ -15,12 +14,13 @@ model ROL {
 }
 
 model USUARIO {
-  usuario_pk Int      @id @default(autoincrement())
-  correo     String   @unique
+  usuario_pk Int       @id @default(autoincrement())
+  correo     String    @unique
   contrasena String
   rol_fk     Int
-  rol        ROL      @relation(fields: [rol_fk], references: [rol_pk])
+  rol        ROL       @relation(fields: [rol_fk], references: [rol_pk])
   persona    PERSONA?
+  carrito    CARRITO?  // Relación opcional con CARRITO, ya que solo los usuarios registrados tendrán carrito
 }
 
 model PERSONA {
@@ -31,6 +31,24 @@ model PERSONA {
   usuario_fk    Int             @unique
   usuario       USUARIO         @relation(fields: [usuario_fk], references: [usuario_pk])
   fPagoClientes FPago_CLIENTE[] 
+}
+
+model CARRITO {
+  carrito_pk   Int       @id @default(autoincrement())
+  usuario_fk   Int?      @unique // Relación opcional con USUARIO (permitiendo carritos para usuarios no registrados)
+  usuario      USUARIO?  @relation(fields: [usuario_fk], references: [usuario_pk]) // Relación opcional
+  guestId      String?   // Campo para identificar el carrito de un invitado (usuarios no registrados)
+  items        CARRITO_ITEM[]  // Relación con los items del carrito
+  total        Decimal   @default(0)  // Total del carrito
+}
+
+model CARRITO_ITEM {
+  carritoItem_pk Int        @id @default(autoincrement())
+  carrito_fk     Int
+  producto_fk    Int
+  cantidad       Int
+  carrito        CARRITO   @relation(fields: [carrito_fk], references: [carrito_pk])
+  producto       PRODUCTOS @relation(fields: [producto_fk], references: [producto_pk])
 }
 
 model SERVICIO_BANCARIO {
@@ -69,19 +87,20 @@ model FPago_CLIENTE {
 }
 
 model PRODUCTOS {
-  producto_pk   Int                @id @default(autoincrement())
+  producto_pk   Int             @id @default(autoincrement())
   nombre        String
   precioVenta   Decimal
   descripcion   String
-  estado        String   @default("disponible")
-  tallas        TALLA[]  // Relación con las tallas
-  inventarios   INVENTARIO[] 
-  registros     REGISTRO[] 
-  facProducto   FAC_PRODUCTO[] 
+  estado        String          @default("disponible")
+  tallas        TALLA[]         // Relación con las tallas
+  inventarios   INVENTARIO[]    
+  registros     REGISTRO[]     
+  facProducto   FAC_PRODUCTO[]  
   serigrafiados PRO_SERIGRAFIADO[] 
-  posters       PRO_POSTERS[] 
+  posters       PRO_POSTERS[]   
   impresiones   PRO_IMPRESION[] 
-  imagenes      IMAGEN[]           
+  imagenes      IMAGEN[]        
+  carritoItems  CARRITO_ITEM[]  // Relación inversa con CARRITO_ITEM
 }
 
 model TALLA {

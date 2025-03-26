@@ -1,7 +1,11 @@
 import { Router } from "express";
-import { Login } from "../../controllers/auth/login.auth";
+import { login } from "../../controllers/auth/login.auth";
+import { register } from "../../controllers/auth/register.auth";
 
-export const authRouter = Router();
+const authRouter = Router();
 
-authRouter.get('/login', Login)
+// Rutas de autenticación
+authRouter.post('/login', login);
+authRouter.post('/register', register);
 
+export default authRouter;

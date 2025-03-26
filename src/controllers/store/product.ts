@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { prisma } from "../../prisma";
 import { upload } from "../../utils/multer";
 import { prismaclient } from "../../index";
+import Decimal from "decimal.js";
 
 export const createProduct = (req: Request, res: Response) => {
   // Middleware de multer para manejar múltiples imágenes (máximo 10)
@@ -180,6 +181,187 @@ export const getProducts = async (_req: Request, res: Response) => {
     res.status(500).json({ error: "Error al obtener los productos" });
   }
 };
+export const addToCart = async (req: Request, res: Response): Promise<Response> => {
+  const { productoId, cantidad, guestId, usuarioId } = req.body;
+
+  if (!productoId || !cantidad || (!guestId && !usuarioId)) {
+    return res.status(400).send("Faltan datos necesarios");
+  }
+
+  try {
+    // Buscar el producto por su ID
+    const producto = await prisma.pRODUCTOS.findUnique({
+      where: { producto_pk: Number(productoId) },
+    });
+
+    if (!producto) {
+      return res.status(404).send("Producto no encontrado");
+    }
+
+    // Determinar si es un carrito de invitado o registrado
+    let carrito;
+
+    const whereConditions: any[] = [];
+
+    // Si el usuario está registrado, agregamos la condición para usuario_fk
+    if (usuarioId) {
+      whereConditions.push({ usuario_fk: Number(usuarioId) });
+    }
+
+    // Si es un carrito de invitado, agregamos la condición para guestId
+    if (guestId) {
+      whereConditions.push({ guestId: guestId });
+    }
+
+    // Buscar el carrito con las condiciones agregadas
+    if (whereConditions.length > 0) {
+      carrito = await prisma.cARRITO.findFirst({
+        where: {
+          OR: whereConditions,
+        },
+      });
+    }
+
+    // Si no existe un carrito, creamos uno nuevo
+    if (!carrito) {
+      const carritoData: any = {
+        total: new Decimal(0), // Total inicial
+      };
+
+      // Si hay usuarioId, agregamos usuario_fk al carrito
+      if (usuarioId) {
+        carritoData.usuario_fk = Number(usuarioId);
+      }
+
+      // Si hay guestId, agregamos guestId al carrito
+      if (guestId) {
+        carritoData.guestId = guestId;
+      }
+
+      // Aseguramos que si hay guestId, no asignamos usuario_fk
+      if (guestId) {
+        delete carritoData.usuario_fk; // Elimina usuario_fk si es un carrito de invitado
+      }
+
+      carrito = await prisma.cARRITO.create({
+        data: carritoData,
+      });
+    }
+
+    // Calcular el total del producto a agregar
+    const totalProducto = new Decimal(cantidad).mul(new Decimal(producto.precioVenta));
+
+    // Actualizar el total del carrito con el nuevo producto
+    carrito = await prisma.cARRITO.update({
+      where: { carrito_pk: carrito.carrito_pk },
+      data: {
+        total: new Decimal(carrito.total).add(totalProducto),
+      },
+    });
+
+    // Crear el item en el carrito
+    await prisma.cARRITO_ITEM.create({
+      data: {
+        cantidad: Number(cantidad),
+        producto_fk: Number(productoId),
+        carrito_fk: carrito.carrito_pk,
+      },
+    });
+
+    return res.status(200).send("Producto agregado al carrito correctamente");
+  } catch (error) {
+    console.error("Error al agregar producto al carrito:", error);
+    return res.status(500).send("Error interno al agregar el producto al carrito");
+  }
+};
+// Función para obtener el carrito
+
+export const getCarrito = async (req: Request, res: Response): Promise<void> => {
+  const { guestId, usuarioId } = req.query;
+
+  // Verificar que al menos uno de los identificadores esté presente
+  if (!guestId && !usuarioId) {
+    res.status(400).json({ error: "Faltan datos necesarios" });
+    return;
+  }
+
+  try {
+    // Determinar si es un carrito de invitado o registrado
+    let carrito;
+
+    const whereConditions: any[] = [];
+
+    // Si el usuario está registrado, agregamos la condición para usuario_fk
+    if (usuarioId) {
+      whereConditions.push({ usuario_fk: Number(usuarioId) });
+    }
+
+    // Si es un carrito de invitado, agregamos la condición para guestId
+    if (guestId) {
+      whereConditions.push({ guestId: String(guestId) });
+    }
+
+    // Buscar el carrito con las condiciones agregadas
+    carrito = await prisma.cARRITO.findFirst({
+      where: {
+        OR: whereConditions,
+      },
+      include: {
+        items: {
+          include: {
+            producto: true, // Incluir los productos dentro del carrito
+          }
+        }
+      }
+    });
+
+    if (!carrito) {
+      res.status(404).json({ error: "Carrito no encontrado" });
+      return;
+    }
+
+    // Calcular el total del carrito
+    const total = carrito.items.reduce(
+      (acc, item) => acc + (Number(item.cantidad) * Number(item.producto.precioVenta)),
+      0
+    );
+
+    // Obtener imágenes de los productos en el carrito
+    const imagedata = await prisma.iMAGEN.findMany({
+      select: {
+        producto_fk: true,
+        url: true,
+      },
+    });
+
+    // Para cada item en el carrito, filtrar las imágenes relacionadas
+    const carritoItemsWithImages = carrito.items.map((item) => {
+      const productImages = imagedata
+        .filter((image) => image.producto_fk === item.producto_fk)
+        .map((image) => image.url);
+
+      return {
+        productoId: item.producto_fk,
+        nombre: item.producto.nombre,
+        cantidad: item.cantidad,
+        precio: item.producto.precioVenta,
+        descripcion: item.producto.descripcion,
+        path: productImages[0] || "",  // Primera imagen
+        hoverPath: productImages[1] || "",  // Segunda imagen (si existe)
+      };
+    });
+
+    // Responder con los datos del carrito
+    res.json({
+      carritoId: carrito.carrito_pk,
+      total,
+      items: carritoItemsWithImages,
+    });
+  } catch (error) {
+    console.error("Error al obtener el carrito:", error);
+    res.status(500).json({ error: "Error interno al obtener el carrito" });
+  }
+};
 
 export const getProductById = async (
   req: Request,
@@ -246,6 +428,10 @@ export const getProductById = async (
   }
 };
 
+
+
+
+
 export const updateProductById = async (req: Request, res: Response) => {
   const { nombre, descripcion, precioVenta, estado } = req.body;
   const { id } = req.params;
@@ -285,3 +471,5 @@ export const deleteProductById = async (req: Request, res: Response) => {
   });
   res.json(data);
 };
+
+
