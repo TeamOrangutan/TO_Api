@@ -3,6 +3,7 @@ import { prismaclient } from "../../index";
 import Decimal from "decimal.js";
 
 interface invoiceProps {
+  nombreCliente: string
   productos: [
     {
       producto_pk: number;
@@ -13,12 +14,15 @@ interface invoiceProps {
 }
 
 export const createInvoice = async (req: Request, res: Response) => {
-  const { productos }: invoiceProps = req.body;
+  const { productos, nombreCliente }: invoiceProps = req.body;
+  console.log(productos);
+  console.log('REQ.BODY:', req.body);
 
   const productoPKs = productos.map((producto) => producto.producto_pk);
 
   const newFactura = await prismaclient.fACTURA.create({
     data: {
+      nombreCliente: nombreCliente,
       total: 0.0,      
     },
   });
@@ -176,5 +180,28 @@ export const getSales = async (_req: Request, res: Response) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Error al obtener las ventas." });
+  }
+};
+
+
+export const getAllInvoices = async (_: any, res: Response): Promise<void> => {
+  try {
+    // Obtenemos todas las facturas junto con sus productos relacionados
+    const facturas = await prismaclient.fACTURA.findMany({
+      include: {
+        formaPago: true,  // Incluye la relación con la forma de pago
+        facProductos: {
+          include: {
+            producto: true,  // Incluye los productos asociados a la factura
+          },
+        },
+      },
+    });
+
+    // Respondemos con las facturas obtenidas
+    res.json(facturas);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al obtener las facturas.' });
   }
 };

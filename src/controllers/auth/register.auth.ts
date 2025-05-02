@@ -10,6 +10,8 @@ export const register = async (req: Request, res: Response): Promise<Response> =
   
     // Validación
     if (!correo || !contrasena || !nombres || !apellidos || !direccion || !rol_fk) {
+      console.log(correo);
+      
       return res.status(400).json({ error: "Todos los campos son requeridos" });
     }
   

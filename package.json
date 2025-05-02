@@ -19,8 +19,12 @@
     "decimal.js": "^10.4.3",
     "express": "^4.17.1",
     "express-fileupload": "^1.5.1",
+    "express-oas-generator": "^1.0.46",
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
+    "swagger-autogen": "^2.23.7",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
     "typescript": "^5.6.3"
   },
   "devDependencies": {

@@ -1,0 +1,5 @@
+-- DropForeignKey
+ALTER TABLE "TALLA" DROP CONSTRAINT "TALLA_producto_fk_fkey";
+
+-- AddForeignKey
+ALTER TABLE "TALLA" ADD CONSTRAINT "TALLA_producto_fk_fkey" FOREIGN KEY ("producto_fk") REFERENCES "PRODUCTOS"("producto_pk") ON DELETE CASCADE ON UPDATE CASCADE;

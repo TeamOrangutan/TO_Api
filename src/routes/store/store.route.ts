@@ -6,31 +6,43 @@ import {
   getProducts,
   updateProductById,
   addToCart,
-  getCarrito
+  getCarrito,
+  deleteItemCarrito,
+
 } from "../../controllers/store/product";
 import path from "path";
+import multer from 'multer';
 
+const storage = multer.diskStorage({
+  destination: function (_req, _file, cb) {
+    cb(null, path.join(__dirname, '../../../uploads'));  // Ruta donde guardar
+  },
+  filename: function (_req, file, cb) {
+    cb(null, Date.now() + '-' + file.originalname);  // Nombre único
+  },
+});
+
+const upload = multer({ storage });;
 const router = express.Router();
 
 // Rutas de productos
 router.post("/", createProduct);
 router.get("/", getProducts);
 router.get("/:id", getProductById);
-router.put("/:id", updateProductById);
+router.put("/:id", upload.array("images", 2), updateProductById);
 router.delete("/:id", deleteProductById);
-router.get("/carrito", getCarrito);  // Ruta para obtener el carrito
+router.delete("/carrito/:carritoId/item/:carritoItemId", deleteItemCarrito);
+router.get("/carrito/:usuarioId", getCarrito);  
 
-// Ruta para agregar al carrito
 router.post("/carrito", async (req, res) => {
   try {
-    await addToCart(req, res);  // Llamar al controlador addToCart
+    await addToCart(req, res);
   } catch (error) {
     console.error("Error en la ruta del carrito:", error);
     res.status(500).json({ error: "Hubo un problema al agregar al carrito." });
   }
 });
 
-// Ruta para servir archivos estáticos
 router.get("/file/uploads/:fileName", function (req, res) {
   const fileName = req.params.fileName;
   const filePath = path.join(__dirname, "../../../uploads", fileName);

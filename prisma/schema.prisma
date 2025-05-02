@@ -1,6 +1,7 @@
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl      = env("DIRECT_URL")
 }
 
 generator client {
@@ -37,7 +38,6 @@ model CARRITO {
   carrito_pk   Int       @id @default(autoincrement())
   usuario_fk   Int?      @unique // Relación opcional con USUARIO (permitiendo carritos para usuarios no registrados)
   usuario      USUARIO?  @relation(fields: [usuario_fk], references: [usuario_pk]) // Relación opcional
-  guestId      String?   // Campo para identificar el carrito de un invitado (usuarios no registrados)
   items        CARRITO_ITEM[]  // Relación con los items del carrito
   total        Decimal   @default(0)  // Total del carrito
 }
@@ -47,8 +47,10 @@ model CARRITO_ITEM {
   carrito_fk     Int
   producto_fk    Int
   cantidad       Int
+  talla_fk   Int?
   carrito        CARRITO   @relation(fields: [carrito_fk], references: [carrito_pk])
-  producto       PRODUCTOS @relation(fields: [producto_fk], references: [producto_pk])
+  producto       PRODUCTOS @relation(fields: [producto_fk], references: [producto_pk], onDelete: Cascade)
+  talla      TALLA? @relation(fields: [talla_fk], references: [talla_pk])
 }
 
 model SERVICIO_BANCARIO {
@@ -75,6 +77,7 @@ model FACTURA {
   total        Decimal        @default(0)
   fecha        DateTime?
   formaPago    FORMA_PAGO?    @relation("FacturaFormaPago", fields: [formaPago_fk], references: [forma_pk])
+  nombreCliente  String?
   facProductos FAC_PRODUCTO[] 
 }
 
@@ -108,14 +111,15 @@ model TALLA {
   nombre        String    // Nombre de la talla (ej. S, M, L, XL)
   cantidad      Int       // Cantidad disponible para esta talla
   producto_fk   Int       // Relación con el producto
-  producto      PRODUCTOS @relation(fields: [producto_fk], references: [producto_pk])  // Relación con PRODUCTOS
+  producto      PRODUCTOS @relation(fields: [producto_fk], references: [producto_pk], onDelete: Cascade)  // Relación con PRODUCTOS
+ carritoItems   CARRITO_ITEM[] 
 }
 
 model IMAGEN {
   imagen_pk   Int      @id @default(autoincrement())
   producto_fk Int
   url         String   // Ruta o URL de la imagen
-  producto    PRODUCTOS @relation(fields: [producto_fk], references: [producto_pk]) // Relación con el producto
+  producto    PRODUCTOS @relation(fields: [producto_fk], references: [producto_pk], onDelete: Cascade) // Relación con el producto
 }
 
 model INVENTARIO {
@@ -123,14 +127,14 @@ model INVENTARIO {
   precioCompra Decimal
   stock        Int
   producto_fk  Int
-  producto     PRODUCTOS @relation(fields: [producto_fk], references: [producto_pk])
+  producto     PRODUCTOS @relation(fields: [producto_fk], references: [producto_pk], onDelete: Cascade)
 }
 
 model REGISTRO {
   registro_pk      Int       @id @default(autoincrement())
   fecha            DateTime
   producto_fk      Int
-  producto         PRODUCTOS @relation(fields: [producto_fk], references: [producto_pk])
+  producto         PRODUCTOS @relation(fields: [producto_fk], references: [producto_pk], onDelete: Cascade)
 }
 
 model FAC_PRODUCTO {
@@ -138,8 +142,8 @@ model FAC_PRODUCTO {
   factura_fk     Int
   producto_fk    Int
   cantidad       Int
-  factura        FACTURA   @relation(fields: [factura_fk], references: [factura_pk])
-  producto       PRODUCTOS @relation(fields: [producto_fk], references: [producto_pk])
+  factura        FACTURA   @relation(fields: [factura_fk], references: [factura_pk], onDelete: Cascade)
+  producto       PRODUCTOS @relation(fields: [producto_fk], references: [producto_pk], onDelete: Cascade)
 }
 
 model MATERIAL {

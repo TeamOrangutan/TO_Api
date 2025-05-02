@@ -4,6 +4,12 @@ import { upload } from "../../utils/multer";
 import { prismaclient } from "../../index";
 import Decimal from "decimal.js";
 
+interface Talla {
+  id: number;
+  name: string;
+  stock: number;
+}
+
 export const createProduct = (req: Request, res: Response) => {
   // Middleware de multer para manejar múltiples imágenes (máximo 10)
   upload.array("images", 10)(req, res, async (err) => {
@@ -15,21 +21,26 @@ export const createProduct = (req: Request, res: Response) => {
     }
 
     // Agregar estos console.log para depurar
-    console.log("Headers:", req.headers); // Muestra las cabeceras de la solicitud
-    console.log("Files:", req.files); // Muestra los archivos subidos
+    // console.log("Headers:", req.headers); // Muestra las cabeceras de la solicitud
+    // console.log("Files:", req.files); // Muestra los archivos subidos
 
     try {
       // Validar si se subieron imágenes
       if (!req.files || !Array.isArray(req.files) || req.files.length === 0) {
-        return res.status(400).json({ error: "Se deben subir al menos una imagen." });
+        return res
+          .status(400)
+          .json({ error: "Se deben subir al menos una imagen." });
       }
-
       // Validar que los archivos sean imágenes
-      const validImageTypes = ['image/jpeg', 'image/png', 'image/gif']; 
-      const invalidFiles = req.files.filter((file: any) => !validImageTypes.includes(file.mimetype));
+      const validImageTypes = ["image/jpeg", "image/png", "image/gif"];
+      const invalidFiles = req.files.filter(
+        (file: any) => !validImageTypes.includes(file.mimetype)
+      );
 
       if (invalidFiles.length > 0) {
-        return res.status(400).json({ error: "Solo se permiten archivos de imagen (JPG, PNG, GIF)." });
+        return res.status(400).json({
+          error: "Solo se permiten archivos de imagen (JPG, PNG, GIF).",
+        });
       }
 
       // Obtener las rutas de las imágenes subidas
@@ -38,8 +49,16 @@ export const createProduct = (req: Request, res: Response) => {
       // Extraer datos del cuerpo de la solicitud
       const { nombre, precioVenta, descripcion, estado, tallas } = req.body;
 
+      console.log("tallas");
+      console.log(tallas.length);
       // Validar que los datos requeridos estén presentes
-      if (!nombre || !precioVenta || !descripcion || !tallas) {
+      if (
+        !nombre ||
+        !precioVenta ||
+        !descripcion ||
+        !tallas ||
+        tallas.length == 2
+      ) {
         return res.status(400).json({ error: "Faltan datos requeridos." });
       }
 
@@ -47,17 +66,23 @@ export const createProduct = (req: Request, res: Response) => {
       try {
         tallasData = JSON.parse(tallas);
       } catch (error) {
-        return res.status(400).json({ error: "El campo 'tallas' debe ser un JSON válido." });
+        return res
+          .status(400)
+          .json({ error: "El campo 'tallas' debe ser un JSON válido." });
       }
 
       if (!Array.isArray(tallasData)) {
-        return res.status(400).json({ error: "El campo 'tallas' debe ser un arreglo." });
+        return res
+          .status(400)
+          .json({ error: "El campo 'tallas' debe ser un arreglo." });
       }
 
       // Validar que cada talla tenga 'nombre' y 'cantidad'
       for (let talla of tallasData) {
         if (!talla.nombre || !talla.cantidad) {
-          return res.status(400).json({ error: "Cada talla debe tener un nombre y una cantidad." });
+          return res
+            .status(400)
+            .json({ error: "Cada talla debe tener un nombre y una cantidad." });
         }
       }
 
@@ -87,7 +112,10 @@ export const createProduct = (req: Request, res: Response) => {
       await prisma.iNVENTARIO.create({
         data: {
           precioCompra: 0, // Suponiendo que no tienes un precio de compra al crear
-          stock: tallasRecords.reduce((total: number, talla: any) => total + talla.cantidad, 0),
+          stock: tallasRecords.reduce(
+            (total: number, talla: any) => total + talla.cantidad,
+            0
+          ),
           producto_fk: producto.producto_pk,
         },
       });
@@ -110,7 +138,7 @@ export const createProduct = (req: Request, res: Response) => {
 
       // Obtener las tallas asociadas al producto
       const tallasRegistradas = await prisma.tALLA.findMany({
-        where: { producto_fk: producto.producto_pk }
+        where: { producto_fk: producto.producto_pk },
       });
 
       // Enviar la respuesta exitosa
@@ -118,13 +146,15 @@ export const createProduct = (req: Request, res: Response) => {
         message: "Producto creado con éxito",
         data: {
           ...producto,
-          tallas: tallasRegistradas,  // Incluir las tallas en la respuesta
+          tallas: tallasRegistradas, // Incluir las tallas en la respuesta
         },
         imagenes, // Incluir las imágenes asociadas al producto
       });
     } catch (error) {
       console.error("Error al crear producto:", error);
-      return res.status(500).json({ error: "Error interno al crear el producto." });
+      return res
+        .status(500)
+        .json({ error: "Error interno al crear el producto." });
     }
   });
 };
@@ -132,15 +162,15 @@ export const createProduct = (req: Request, res: Response) => {
 export const getProducts = async (_req: Request, res: Response) => {
   try {
     // Obtener datos de las imágenes
-    const imagedata = await prismaclient.iMAGEN.findMany({
+    const imagedata = await prisma.iMAGEN.findMany({
       select: {
-        producto_fk: true, // Relacionamos con el producto
-        url: true, // La URL de la imagen
+        producto_fk: true,
+        url: true,
       },
     });
 
     // Obtener los datos de los productos
-    const productData = await prismaclient.pRODUCTOS.findMany({
+    const productData = await prisma.pRODUCTOS.findMany({
       select: {
         producto_pk: true,
         nombre: true,
@@ -152,13 +182,18 @@ export const getProducts = async (_req: Request, res: Response) => {
             fecha: true,
           },
         },
+        tallas: {
+          select: { nombre: true }, // Seleccionamos las tallas relacionadas
+        },
       },
     });
 
+    // Mapear productos para agregar imágenes
     const products = productData.map((product) => {
       const productImages = imagedata
         .filter((image) => image.producto_fk === product.producto_pk)
         .map((image) => image.url);
+
       const publicationDate =
         product.registros.length > 0 ? product.registros[0].fecha : null;
 
@@ -171,87 +206,83 @@ export const getProducts = async (_req: Request, res: Response) => {
         price: product.precioVenta,
         hoverPath: productImages[1] || "",
         fecha_de_publicacion: publicationDate,
+        tallas: product.tallas.map((t) => t.nombre), // Agregamos las tallas
       };
     });
 
     res.json(products);
-    console.log(products);
   } catch (error) {
     console.error("Error al obtener productos:", error);
     res.status(500).json({ error: "Error al obtener los productos" });
   }
 };
-export const addToCart = async (req: Request, res: Response): Promise<Response> => {
-  const { productoId, cantidad, guestId, usuarioId } = req.body;
 
-  if (!productoId || !cantidad || (!guestId && !usuarioId)) {
-    return res.status(400).send("Faltan datos necesarios");
+export const addToCart = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const { productId, cantidad, talla, usuarioId } = req.body;
+
+  console.log(req.body);
+
+  if (!productId || !usuarioId) {
+    return res.status(400).json({ message: "Faltan datos necesarios" });
   }
 
   try {
-    // Buscar el producto por su ID
     const producto = await prisma.pRODUCTOS.findUnique({
-      where: { producto_pk: Number(productoId) },
+      where: { producto_pk: Number(productId) },
+      include: { tallas: true },
     });
 
     if (!producto) {
-      return res.status(404).send("Producto no encontrado");
+      return res.status(404).json({ message: "Producto no encontrado" });
     }
 
-    // Determinar si es un carrito de invitado o registrado
-    let carrito;
+    const usuario = await prisma.uSUARIO.findUnique({
+      where: { usuario_pk: usuarioId },
+    });
 
-    const whereConditions: any[] = [];
-
-    // Si el usuario está registrado, agregamos la condición para usuario_fk
-    if (usuarioId) {
-      whereConditions.push({ usuario_fk: Number(usuarioId) });
+    if (!usuario) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
     }
 
-    // Si es un carrito de invitado, agregamos la condición para guestId
-    if (guestId) {
-      whereConditions.push({ guestId: guestId });
-    }
+    let carrito = await prisma.cARRITO.findUnique({
+      where: { usuario_fk: usuario.usuario_pk },
+    });
 
-    // Buscar el carrito con las condiciones agregadas
-    if (whereConditions.length > 0) {
-      carrito = await prisma.cARRITO.findFirst({
-        where: {
-          OR: whereConditions,
+    if (!carrito) {
+      carrito = await prisma.cARRITO.create({
+        data: {
+          usuario_fk: usuario.usuario_pk,
+          total: new Decimal(0),
         },
       });
     }
 
-    // Si no existe un carrito, creamos uno nuevo
-    if (!carrito) {
-      const carritoData: any = {
-        total: new Decimal(0), // Total inicial
-      };
+    let tallaSeleccionada = null;
+    if (talla) {
+      // <- solo si mandan talla
+      tallaSeleccionada = producto.tallas.find(
+        (t) => t.nombre.toLowerCase() === talla.toLowerCase()
+      );
 
-      // Si hay usuarioId, agregamos usuario_fk al carrito
-      if (usuarioId) {
-        carritoData.usuario_fk = Number(usuarioId);
+      if (!tallaSeleccionada) {
+        return res
+          .status(404)
+          .json({ message: "Talla no encontrada para este producto" });
       }
-
-      // Si hay guestId, agregamos guestId al carrito
-      if (guestId) {
-        carritoData.guestId = guestId;
+      if (tallaSeleccionada?.cantidad < cantidad) {
+        return res.status(400).json({
+          message: "No hay suficiente stock disponible para esta talla",
+        });
       }
-
-      // Aseguramos que si hay guestId, no asignamos usuario_fk
-      if (guestId) {
-        delete carritoData.usuario_fk; // Elimina usuario_fk si es un carrito de invitado
-      }
-
-      carrito = await prisma.cARRITO.create({
-        data: carritoData,
-      });
     }
 
-    // Calcular el total del producto a agregar
-    const totalProducto = new Decimal(cantidad).mul(new Decimal(producto.precioVenta));
+    const totalProducto = new Decimal(cantidad).mul(
+      new Decimal(producto.precioVenta)
+    );
 
-    // Actualizar el total del carrito con el nuevo producto
     carrito = await prisma.cARRITO.update({
       where: { carrito_pk: carrito.carrito_pk },
       data: {
@@ -259,60 +290,88 @@ export const addToCart = async (req: Request, res: Response): Promise<Response> 
       },
     });
 
-    // Crear el item en el carrito
-    await prisma.cARRITO_ITEM.create({
+    const carritoItem = await prisma.cARRITO_ITEM.create({
       data: {
         cantidad: Number(cantidad),
-        producto_fk: Number(productoId),
+        producto_fk: Number(productId),
         carrito_fk: carrito.carrito_pk,
+        talla_fk: tallaSeleccionada ? tallaSeleccionada.talla_pk : null, // <- puede ser null
+      },
+      include: {
+        producto: true,
+        talla: true,
       },
     });
 
-    return res.status(200).send("Producto agregado al carrito correctamente");
+
+    if (tallaSeleccionada) {
+      await prisma.tALLA.update({
+        where: { talla_pk: tallaSeleccionada.talla_pk },
+        data: {
+          cantidad: {
+            decrement: Number(cantidad),
+          },
+        },
+      });
+    }
+
+    return res.status(200).json({
+      message: "Producto agregado al carrito correctamente",
+      carrito: {
+        id: carrito.carrito_pk,
+        total: carrito.total,
+        usuario: usuarioId,
+      },
+      itemAgregado: {
+        id: carritoItem.carritoItem_pk,
+        cantidad: carritoItem.cantidad,
+        talla: carritoItem.talla ? carritoItem.talla.nombre : "Sin talla",
+        producto: {
+          id: carritoItem.producto.producto_pk,
+          nombre: carritoItem.producto.nombre,
+          precio: carritoItem.producto.precioVenta,
+        },
+      },
+    });
   } catch (error) {
     console.error("Error al agregar producto al carrito:", error);
-    return res.status(500).send("Error interno al agregar el producto al carrito");
+    return res.status(500).json({
+      message: "Error interno al agregar el producto al carrito",
+    });
   }
 };
-// Función para obtener el carrito
 
-export const getCarrito = async (req: Request, res: Response): Promise<void> => {
-  const { guestId, usuarioId } = req.query;
+export const getCarrito = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const { usuarioId } = req.params;
 
-  // Verificar que al menos uno de los identificadores esté presente
-  if (!guestId && !usuarioId) {
-    res.status(400).json({ error: "Faltan datos necesarios" });
+  console.log('hola');
+  
+
+  // Validación de entrada
+  if (!usuarioId || isNaN(Number(usuarioId))) {
+    res
+      .status(400)
+      .json({ error: "Faltan datos necesarios o usuarioId no válido" });
     return;
   }
 
   try {
-    // Determinar si es un carrito de invitado o registrado
-    let carrito;
-
-    const whereConditions: any[] = [];
-
-    // Si el usuario está registrado, agregamos la condición para usuario_fk
-    if (usuarioId) {
-      whereConditions.push({ usuario_fk: Number(usuarioId) });
-    }
-
-    // Si es un carrito de invitado, agregamos la condición para guestId
-    if (guestId) {
-      whereConditions.push({ guestId: String(guestId) });
-    }
-
-    // Buscar el carrito con las condiciones agregadas
-    carrito = await prisma.cARRITO.findFirst({
+    // Buscar el carrito del usuario
+    const carrito = await prisma.cARRITO.findFirst({
       where: {
-        OR: whereConditions,
+        usuario_fk: Number(usuarioId),
       },
       include: {
         items: {
           include: {
-            producto: true, // Incluir los productos dentro del carrito
-          }
-        }
-      }
+            producto: true,
+            talla: true, // Incluir talla si se está usando
+          },
+        },
+      },
     });
 
     if (!carrito) {
@@ -320,46 +379,139 @@ export const getCarrito = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    // Calcular el total del carrito
-    const total = carrito.items.reduce(
-      (acc, item) => acc + (Number(item.cantidad) * Number(item.producto.precioVenta)),
-      0
-    );
-
-    // Obtener imágenes de los productos en el carrito
-    const imagedata = await prisma.iMAGEN.findMany({
+    // Obtener imágenes de todos los productos
+    const imagenes = await prisma.iMAGEN.findMany({
       select: {
         producto_fk: true,
         url: true,
       },
     });
 
-    // Para cada item en el carrito, filtrar las imágenes relacionadas
-    const carritoItemsWithImages = carrito.items.map((item) => {
-      const productImages = imagedata
-        .filter((image) => image.producto_fk === item.producto_fk)
-        .map((image) => image.url);
-
+    // Armar los items con imagen y detalles
+    const itemsConDetalles = carrito.items.map((item) => {
+      const imagenesProducto = imagenes.filter(
+        (img) => img.producto_fk === item.producto_fk
+      );
       return {
+        carritoItem_Id: item.carritoItem_pk,
         productoId: item.producto_fk,
         nombre: item.producto.nombre,
-        cantidad: item.cantidad,
-        precio: item.producto.precioVenta,
         descripcion: item.producto.descripcion,
-        path: productImages[0] || "",  // Primera imagen
-        hoverPath: productImages[1] || "",  // Segunda imagen (si existe)
+        precio: item.producto.precioVenta,
+        cantidad: item.cantidad,
+        talla: item.talla?.nombre || null,
+        path: imagenesProducto[0]?.url || "",
+        hoverPath: imagenesProducto[1]?.url || "",
       };
     });
 
-    // Responder con los datos del carrito
+    // Calcular total
+    const total = carrito.items.reduce(
+      (acc, item) => acc + Number(item.producto.precioVenta) * item.cantidad,
+      0
+    );
+
+    // Respuesta
     res.json({
       carritoId: carrito.carrito_pk,
       total,
-      items: carritoItemsWithImages,
+      items: itemsConDetalles,
     });
   } catch (error) {
     console.error("Error al obtener el carrito:", error);
     res.status(500).json({ error: "Error interno al obtener el carrito" });
+  }
+};
+
+export const deleteItemCarrito = async (req: Request, res: Response) => {
+  const { carritoId, carritoItemId } = req.params;
+
+  try {
+    // Verificar si el carrito existe
+    const carrito = await prisma.cARRITO.findUnique({
+      where: {
+        carrito_pk: parseInt(carritoId),
+      },
+      include: { items: true },
+    });
+
+    if (!carrito) {
+      return res.status(404).json({ message: "Carrito no encontrado" });
+    }
+
+    // Verificar si el ítem existe dentro del carrito
+    const carritoItem = await prisma.cARRITO_ITEM.findUnique({
+      where: {
+        carritoItem_pk: parseInt(carritoItemId),
+      },
+      include: {
+        producto: true,
+        talla: true,
+      },
+    });
+
+    if (!carritoItem || carritoItem.carrito_fk !== parseInt(carritoId)) {
+      return res
+        .status(404)
+        .json({ message: "Ítem no encontrado en este carrito" });
+    }
+  
+
+    if (carritoItem.talla_fk) {
+      await prisma.tALLA.update({
+        where: { talla_pk: carritoItem.talla_fk },
+        data: {
+          cantidad: {
+            increment: carritoItem.cantidad,
+          },
+        },
+      });
+    }
+    
+
+    // Eliminar el ítem
+    await prisma.cARRITO_ITEM.delete({
+      where: {
+        carritoItem_pk: parseInt(carritoItemId),
+      },
+    });
+
+    // Recalcular el total del carrito
+    const updatedItems = await prisma.cARRITO_ITEM.findMany({
+      where: {
+        carrito_fk: parseInt(carritoId),
+      },
+      include: {
+        producto: true,
+      },
+    });
+
+    const newTotal = updatedItems.reduce((sum, item) => {
+      return (
+        sum + parseFloat(item.producto.precioVenta.toString()) * item.cantidad
+      );
+    }, 0);
+
+    // Actualizar el total del carrito
+    await prisma.cARRITO.update({
+      where: {
+        carrito_pk: parseInt(carritoId),
+      },
+      data: {
+        total: newTotal,
+      },
+    });
+
+    // Respuesta exitosa
+    return res.json({
+      message: "Ítem eliminado correctamente",
+      newTotal,
+    });
+  } catch (error) {
+    console.error(error);
+    return res
+      .status(500)
+      .json({ message: "Error al eliminar el ítem del carrito" });
   }
 };
 
@@ -375,6 +527,7 @@ export const getProductById = async (
   }
 
   try {
+    // Obtener datos del producto
     const product = await prisma.pRODUCTOS.findFirst({
       where: {
         producto_pk: Number(id),
@@ -390,6 +543,13 @@ export const getProductById = async (
             fecha: true,
           },
         },
+        tallas: {
+          select: {
+            talla_pk: true,
+            nombre: true,
+            cantidad: true,
+          },
+        },
       },
     });
 
@@ -398,16 +558,17 @@ export const getProductById = async (
       return;
     }
 
+    // Obtener imágenes del producto
     const imagedata = await prisma.iMAGEN.findMany({
+      where: {
+        producto_fk: Number(id),
+      },
       select: {
-        producto_fk: true,
         url: true,
       },
     });
 
-    const productImages = imagedata
-      .filter((image) => image.producto_fk === product?.producto_pk)
-      .map((image) => image.url);
+    const productImages = imagedata.map((image) => image.url);
 
     const publicationDate =
       product.registros.length > 0 ? product.registros[0].fecha : null;
@@ -421,6 +582,11 @@ export const getProductById = async (
       price: product.precioVenta,
       hoverPath: productImages[1] || "",
       fecha_de_publicacion: publicationDate,
+      tallas: product.tallas.map((talla) => ({
+        id: talla.talla_pk,
+        name: talla.nombre,
+        stock: talla.cantidad,
+      })),
     });
   } catch (error) {
     console.error(error);
@@ -428,31 +594,94 @@ export const getProductById = async (
   }
 };
 
-
-
-
-
 export const updateProductById = async (req: Request, res: Response) => {
-  const { nombre, descripcion, precioVenta, estado } = req.body;
+  const { nombre, descripcion, precioVenta, estado, tallas } = req.body;
   const { id } = req.params;
 
+  console.log("Datos recibidos:", req.body);
+  console.log("Imágenes recibidas:", req.files); // Aquí tienes el array de imágenes
+  const imagenesAntiguas = JSON.parse(req.body.imagenesAntiguas); // Llega como string
+
+  console.log("imagenesAntiguas");
+  console.log(imagenesAntiguas);
+
+  // Comprobar si req.files es un array de archivos y mapear las rutas de las imágenes
+  const imagenes = Array.isArray(req.files)
+    ? (req.files as Express.Multer.File[]).map(
+        (file) => `uploads/${file.filename}`
+      )
+    : [];
+
+  console.log("Imágenes procesadas:");
+  console.log(JSON.parse(tallas));
+  const tallasP = JSON.parse(tallas);
+  if (tallasP) {
+    tallasP.map((talla: Talla) => {
+      console.log("Talla id:", talla.id);
+      console.log("Talla name:", talla.name);
+      console.log("Talla stock:", talla.stock);
+    });
+  } else {
+    console.log("tallas no es un array:", tallas);
+  }
+
   try {
+    const productoId = Number(id);
+
+    // 1. Actualizar los datos principales del producto
     await prismaclient.pRODUCTOS.update({
-      where: {
-        producto_pk: Number(id), 
-      },
+      where: { producto_pk: productoId },
       data: {
-        nombre: nombre, 
-        precioVenta: precioVenta,
-        descripcion: descripcion, 
-        estado: estado,
+        nombre,
+        precioVenta,
+        descripcion,
+        estado,
       },
     });
-    
-    res.status(200).send("Producto actualizado correctamente");
+
+    // 2. Eliminar tallas anteriores
+    await prismaclient.tALLA.deleteMany({
+      where: { producto_fk: productoId },
+    });
+
+    // 3. Insertar nuevas tallas
+
+    for (const talla of tallasP) {
+      await prismaclient.tALLA.create({
+        data: {
+          nombre: talla.name,
+          cantidad: talla.stock,
+          producto_fk: productoId,
+        },
+      });
+    }
+
+    // 4. Eliminar todas las imágenes anteriores
+    await prismaclient.iMAGEN.deleteMany({
+      where: {
+        producto_fk: productoId,
+      },
+    });
+    console.log("Imágenes anteriores eliminadas");
+
+    // 5. Insertar las imágenes antiguas (si las hay) y las nuevas
+    const imagenesFinales = imagenesAntiguas.concat(imagenes); // Combina las imágenes antiguas con las nuevas
+    if (imagenesFinales.length > 0) {
+      for (const url of imagenesFinales) {
+        await prismaclient.iMAGEN.create({
+          data: {
+            url,
+            producto_fk: productoId,
+          },
+        });
+      }
+      console.log("Imágenes actualizadas (nuevas y antiguas)");
+    }
+
+    res.status(200).json({ message: "Producto actualizado correctamente" });
   } catch (error) {
     console.error("Error al actualizar el producto:", error);
-    res.status(500).send("Error interno al actualizar el producto");
+    res.status(500).json({ error: "Error interno al actualizar el producto" });
   }
 };
 
@@ -471,5 +700,3 @@ export const deleteProductById = async (req: Request, res: Response) => {
   });
   res.json(data);
 };
-
-
