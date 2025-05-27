@@ -8,10 +8,12 @@ import {
   addToCart,
   getCarrito,
   deleteItemCarrito,
+  updateItemCarrito,
 
 } from "../../controllers/store/product";
 import path from "path";
 import multer from 'multer';
+import { authenticate } from "../../controllers/auth/auth.middleware";
 
 const storage = multer.diskStorage({
   destination: function (_req, _file, cb) {
@@ -27,14 +29,18 @@ const router = express.Router();
 
 // Rutas de productos
 router.post("/", createProduct);
-router.get("/", getProducts);
-router.get("/:id", getProductById);
-router.put("/:id", upload.array("images", 2), updateProductById);
+router.get("/",getProducts);
+router.get("/:id",getProductById);
+router.put("/:id", authenticate,upload.array("images", 2), updateProductById);
 router.delete("/:id", deleteProductById);
-router.delete("/carrito/:carritoId/item/:carritoItemId", deleteItemCarrito);
-router.get("/carrito/:usuarioId", getCarrito);  
+router.delete("/carrito/:carritoId/item/:carritoItemId", authenticate,deleteItemCarrito);
 
-router.post("/carrito", async (req, res) => {
+router.put("/updateProductItem/:carritoItemId/", updateItemCarrito);
+
+
+router.get("/carrito/:usuarioId", authenticate,getCarrito);  
+
+router.post("/carrito", authenticate,async (req, res) => {
   try {
     await addToCart(req, res);
   } catch (error) {

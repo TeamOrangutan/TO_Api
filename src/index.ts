@@ -6,7 +6,8 @@ import AppProduct from './routes/index';
 import cors from 'cors';
 import authRouter from './routes/auth/auth.route';  
 import expressOasGenerator from 'express-oas-generator';
-
+import paypalRouter from './routes/payments/checkout.route';
+import orderRoute from './routes/orders/orders.route';
 const app = express();
 
 // Inicializar express-oas-generator antes de cualquier middleware
@@ -26,6 +27,8 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use('/api', AppProduct);
 app.use('/api/auth', authRouter);
+app.use('/api/payments', paypalRouter);
+app.use('/api/orders', orderRoute)
 
 app.listen(PORT, () => {
   console.log(`App listening on port ${PORT}`);

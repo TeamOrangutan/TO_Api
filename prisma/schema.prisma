@@ -1,7 +1,7 @@
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-  directUrl      = env("DIRECT_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 generator client {
@@ -18,107 +18,154 @@ model USUARIO {
   usuario_pk Int       @id @default(autoincrement())
   correo     String    @unique
   contrasena String
+  passwordChangedAt DateTime?
   rol_fk     Int
   rol        ROL       @relation(fields: [rol_fk], references: [rol_pk])
+  resetToken       String?      // token de recuperación
+  resetTokenExpiry DateTime?    // expiración del token
   persona    PERSONA?
-  carrito    CARRITO?  // Relación opcional con CARRITO, ya que solo los usuarios registrados tendrán carrito
+  carrito    CARRITO?
+  ordenes    ORDENES[]
 }
 
 model PERSONA {
-  persona_pk    Int             @id @default(autoincrement())
-  nombres       String
-  apellidos     String
-  direccion     String
-  usuario_fk    Int             @unique
-  usuario       USUARIO         @relation(fields: [usuario_fk], references: [usuario_pk])
-  fPagoClientes FPago_CLIENTE[] 
+  persona_pk   Int     @id @default(autoincrement())
+  nombres      String
+  apellidos    String
+  direccion    String
+  usuario_fk   Int     @unique
+  usuario      USUARIO @relation(fields: [usuario_fk], references: [usuario_pk])
+  // fPagoClientes FPago_CLIENTE[]
+  imagenPerfil String?
 }
 
 model CARRITO {
-  carrito_pk   Int       @id @default(autoincrement())
-  usuario_fk   Int?      @unique // Relación opcional con USUARIO (permitiendo carritos para usuarios no registrados)
-  usuario      USUARIO?  @relation(fields: [usuario_fk], references: [usuario_pk]) // Relación opcional
-  items        CARRITO_ITEM[]  // Relación con los items del carrito
-  total        Decimal   @default(0)  // Total del carrito
+  carrito_pk Int            @id @default(autoincrement())
+  usuario_fk Int?           @unique // Relación opcional con USUARIO (permitiendo carritos para usuarios no registrados)
+  usuario    USUARIO?       @relation(fields: [usuario_fk], references: [usuario_pk]) // Relación opcional
+  items      CARRITO_ITEM[] // Relación con los items del carrito
+  total      Decimal        @default(0) // Total del carrito
 }
 
 model CARRITO_ITEM {
-  carritoItem_pk Int        @id @default(autoincrement())
+  carritoItem_pk Int       @id @default(autoincrement())
   carrito_fk     Int
   producto_fk    Int
   cantidad       Int
-  talla_fk   Int?
+  talla_fk       Int?
   carrito        CARRITO   @relation(fields: [carrito_fk], references: [carrito_pk])
   producto       PRODUCTOS @relation(fields: [producto_fk], references: [producto_pk], onDelete: Cascade)
-  talla      TALLA? @relation(fields: [talla_fk], references: [talla_pk])
+  talla          TALLA?    @relation(fields: [talla_fk], references: [talla_pk])
 }
 
-model SERVICIO_BANCARIO {
-  servicio_pk Int          @id @default(autoincrement())
-  nombre      String
-  formasPago  FORMA_PAGO[] // Relación inversa con FORMA_PAGO
+// model SERVICIO_BANCARIO {
+//   servicio_pk Int          @id @default(autoincrement())
+//   nombre      String
+//   formasPago  FORMA_PAGO[] // Relación inversa con FORMA_PAGO
+// }
+
+// model FORMA_PAGO {
+//   forma_pk          Int               @id @default(autoincrement())
+//   numeroTarjeta     String
+//   nombrePropietario String
+//   codigo            String
+//   fechaExpiracion   DateTime
+//   servicio_fk       Int
+//   servicio          SERVICIO_BANCARIO @relation(fields: [servicio_fk], references: [servicio_pk])
+//   facturas          FACTURA[]         @relation("FacturaFormaPago") // Relación con FACTURA
+//   fPagoClientes     FPago_CLIENTE[] // Relación inversa con FPago_CLIENTE
+// }
+
+model ORDENES {
+  orden_pk   Int          @id @default(autoincrement())
+  orderId    String       @unique
+  usuario_fk Int
+  estado     String
+  payerEmail String?
+  payerName  String?
+  total      Float
+  moneda     String?
+  createdAt  DateTime     @default(now())
+  usuario    USUARIO      @relation(fields: [usuario_fk], references: [usuario_pk])
+  ordenItem  ORDEN_ITEM[]
+  factura    Factura?     @relation("OrdenFactura")
 }
 
-model FORMA_PAGO {
-  forma_pk          Int               @id @default(autoincrement())
-  numeroTarjeta     String
-  nombrePropietario String
-  codigo            String
-  fechaExpiracion   DateTime
-  servicio_fk       Int
-  servicio          SERVICIO_BANCARIO @relation(fields: [servicio_fk], references: [servicio_pk])
-  facturas          FACTURA[]         @relation("FacturaFormaPago") // Relación con FACTURA
-  fPagoClientes     FPago_CLIENTE[] // Relación inversa con FPago_CLIENTE
+model ORDEN_ITEM {
+  orden_item_pk       Int           @id @default(autoincrement())
+  orden_fk            Int
+  producto_fk         Int
+  talla_fk            Int?
+  cantidad            Int
+  precio_unitario_usd Float
+  subtotal_usd        Float
+  ordenes             ORDENES       @relation(fields: [orden_fk], references: [orden_pk])
+  producto            PRODUCTOS     @relation(fields: [producto_fk], references: [producto_pk])
+  talla               TALLA?        @relation(fields: [talla_fk], references: [talla_pk])
+  facItems            FacturaItem[]
 }
 
-model FACTURA {
-  factura_pk   Int            @id @default(autoincrement())
-  formaPago_fk Int?
-  total        Decimal        @default(0)
-  fecha        DateTime?
-  formaPago    FORMA_PAGO?    @relation("FacturaFormaPago", fields: [formaPago_fk], references: [forma_pk])
-  nombreCliente  String?
-  facProductos FAC_PRODUCTO[] 
+model Factura {
+  factura_pk    Int           @id @default(autoincrement())
+  orden_id      Int           @unique
+  orden_fk      ORDENES       @relation("OrdenFactura", fields: [orden_id], references: [orden_pk])
+  fecha         DateTime      @default(now())
+  nombreCliente String
+  direccion      String?
+  telefono    String?
+  metodoPago      String?
+  total         Float
+  folio         String   @unique
+  facItems      FacturaItem[]
 }
 
-model FPago_CLIENTE {
-  fpc_pk     Int        @id @default(autoincrement())
-  forma_fk   Int
-  cliente_fk Int
-  formaPago  FORMA_PAGO @relation(fields: [forma_fk], references: [forma_pk])
-  cliente    PERSONA    @relation(fields: [cliente_fk], references: [persona_pk])
+model FacturaItem {
+  factura_item_pk Int        @id @default(autoincrement())
+  factura_fk      Factura    @relation(fields: [factura_id], references: [factura_pk])
+  factura_id      Int
+  orden_item_id   Int
+  orden_item_fk   ORDEN_ITEM @relation(fields: [orden_item_id], references: [orden_item_pk])
 }
+
+// model FPago_CLIENTE {
+//   fpc_pk     Int        @id @default(autoincrement())
+//   forma_fk   Int
+//   cliente_fk Int
+//   formaPago  FORMA_PAGO @relation(fields: [forma_fk], references: [forma_pk])
+//   cliente    PERSONA    @relation(fields: [cliente_fk], references: [persona_pk])
+// }
 
 model PRODUCTOS {
-  producto_pk   Int             @id @default(autoincrement())
+  producto_pk   Int                @id @default(autoincrement())
   nombre        String
   precioVenta   Decimal
   descripcion   String
-  estado        String          @default("disponible")
-  tallas        TALLA[]         // Relación con las tallas
-  inventarios   INVENTARIO[]    
-  registros     REGISTRO[]     
-  facProducto   FAC_PRODUCTO[]  
-  serigrafiados PRO_SERIGRAFIADO[] 
-  posters       PRO_POSTERS[]   
-  impresiones   PRO_IMPRESION[] 
-  imagenes      IMAGEN[]        
-  carritoItems  CARRITO_ITEM[]  // Relación inversa con CARRITO_ITEM
+  estado        String             @default("disponible")
+  tallas        TALLA[] // Relación con las tallas
+  inventarios   INVENTARIO[]
+  registros     REGISTRO[]
+  serigrafiados PRO_SERIGRAFIADO[]
+  posters       PRO_POSTERS[]
+  impresiones   PRO_IMPRESION[]
+  imagenes      IMAGEN[]
+  carritoItems  CARRITO_ITEM[] // Relación inversa con CARRITO_ITEM
+  ordenItem     ORDEN_ITEM[]
 }
 
 model TALLA {
-  talla_pk      Int       @id @default(autoincrement())  // Identificador único para la talla
-  nombre        String    // Nombre de la talla (ej. S, M, L, XL)
-  cantidad      Int       // Cantidad disponible para esta talla
-  producto_fk   Int       // Relación con el producto
-  producto      PRODUCTOS @relation(fields: [producto_fk], references: [producto_pk], onDelete: Cascade)  // Relación con PRODUCTOS
- carritoItems   CARRITO_ITEM[] 
+  talla_pk     Int            @id @default(autoincrement()) // Identificador único para la talla
+  nombre       String // Nombre de la talla (ej. S, M, L, XL)
+  cantidad     Int // Cantidad disponible para esta talla
+  producto_fk  Int // Relación con el producto
+  producto     PRODUCTOS      @relation(fields: [producto_fk], references: [producto_pk], onDelete: Cascade) // Relación con PRODUCTOS
+  carritoItems CARRITO_ITEM[]
+  ordenItem    ORDEN_ITEM[]
 }
 
 model IMAGEN {
-  imagen_pk   Int      @id @default(autoincrement())
+  imagen_pk   Int       @id @default(autoincrement())
   producto_fk Int
-  url         String   // Ruta o URL de la imagen
+  url         String // Ruta o URL de la imagen
   producto    PRODUCTOS @relation(fields: [producto_fk], references: [producto_pk], onDelete: Cascade) // Relación con el producto
 }
 
@@ -131,19 +178,10 @@ model INVENTARIO {
 }
 
 model REGISTRO {
-  registro_pk      Int       @id @default(autoincrement())
-  fecha            DateTime
-  producto_fk      Int
-  producto         PRODUCTOS @relation(fields: [producto_fk], references: [producto_pk], onDelete: Cascade)
-}
-
-model FAC_PRODUCTO {
-  facProducto_pk Int       @id @default(autoincrement())
-  factura_fk     Int
-  producto_fk    Int
-  cantidad       Int
-  factura        FACTURA   @relation(fields: [factura_fk], references: [factura_pk], onDelete: Cascade)
-  producto       PRODUCTOS @relation(fields: [producto_fk], references: [producto_pk], onDelete: Cascade)
+  registro_pk Int       @id @default(autoincrement())
+  fecha       DateTime
+  producto_fk Int
+  producto    PRODUCTOS @relation(fields: [producto_fk], references: [producto_pk], onDelete: Cascade)
 }
 
 model MATERIAL {

@@ -160,6 +160,7 @@ export const createProduct = (req: Request, res: Response) => {
 };
 
 export const getProducts = async (_req: Request, res: Response) => {
+
   try {
     // Obtener datos de las imágenes
     const imagedata = await prisma.iMAGEN.findMany({
@@ -303,7 +304,6 @@ export const addToCart = async (
       },
     });
 
-
     if (tallaSeleccionada) {
       await prisma.tALLA.update({
         where: { talla_pk: tallaSeleccionada.talla_pk },
@@ -313,6 +313,22 @@ export const addToCart = async (
           },
         },
       });
+
+      // Verifica si todas las tallas tienen cantidad 0
+      const tallasDelProducto = await prisma.tALLA.findMany({
+        where: { producto_fk: producto.producto_pk },
+      });
+
+      const todasAgotadas = tallasDelProducto.every((t) => t.cantidad === 0);
+
+      if (todasAgotadas) {
+        await prisma.pRODUCTOS.update({
+          where: { producto_pk: producto.producto_pk },
+          data: {
+            estado: "Agotado",
+          },
+        });
+      }
     }
 
     return res.status(200).json({
@@ -347,8 +363,7 @@ export const getCarrito = async (
 ): Promise<void> => {
   const { usuarioId } = req.params;
 
-  console.log('hola');
-  
+  console.log("hola");
 
   // Validación de entrada
   if (!usuarioId || isNaN(Number(usuarioId))) {
@@ -423,6 +438,157 @@ export const getCarrito = async (
   }
 };
 
+export const updateItemCarrito = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const { itemId, talla, cantidad, action } = req.body;
+
+  console.log("entrando");
+  console.log(cantidad);
+  console.log(talla);
+  console.log(action);
+
+  if (!itemId || !action) {
+    return res.status(400).json({ message: "Faltan datos necesarios" });
+  }
+
+  if (!["increment", "decrement"].includes(action)) {
+    return res.status(400).json({ message: "Acción no válida" });
+  }
+
+  try {
+    const item = await prisma.cARRITO_ITEM.findUnique({
+      where: { carritoItem_pk: Number(itemId) },
+      include: {
+        producto: { include: { tallas: true } },
+        talla: true,
+        carrito: true,
+      },
+    });
+
+    if (!item) {
+      return res
+        .status(404)
+        .json({ message: "Item del carrito no encontrado" });
+    }
+
+    const producto = item.producto;
+    const carrito = item.carrito;
+
+    if (producto.estado.toLowerCase() === "agotado") {
+      return res.status(400).json({ message: "El producto está agotado" });
+    }
+
+    // Buscar talla (puede ser la misma o distinta)
+    const nuevaTalla = talla
+      ? producto.tallas.find(
+          (t) => t.nombre.toLowerCase() === talla.toLowerCase()
+        )
+      : item.talla;
+
+    console.log("nuevaTalla?.cantidad");
+    console.log(nuevaTalla?.cantidad);
+
+    console.log(item.cantidad);
+
+    if (!nuevaTalla) {
+      return res.status(404).json({ message: "Talla no encontrada" });
+    }
+
+    const precioUnitario = new Decimal(producto.precioVenta);
+    const diferenciaTotal = precioUnitario.mul(cantidad);
+
+    if (action === "increment") {
+      if (nuevaTalla?.cantidad === 0) {
+        return res.status(400).json({ message: "Esta talla está agotada" });
+      }
+
+      if (nuevaTalla.cantidad < cantidad) {
+        return res.status(400).json({ message: "Stock insuficiente" });
+      }
+
+      // 1. Actualizar stock: RESTAR cantidad
+      await prisma.tALLA.update({
+        where: { talla_pk: nuevaTalla.talla_pk },
+        data: {
+          cantidad: { decrement: cantidad },
+        },
+      });
+
+      // 2. Actualizar carrito item: SUMAR cantidad
+      const itemActualizado = await prisma.cARRITO_ITEM.update({
+        where: { carritoItem_pk: Number(itemId) },
+        data: {
+          cantidad: { increment: cantidad },
+          talla_fk: nuevaTalla.talla_pk,
+        },
+        include: { producto: true, talla: true },
+      });
+
+      // 3. Actualizar total del carrito
+      await prisma.cARRITO.update({
+        where: { carrito_pk: carrito.carrito_pk },
+        data: {
+          total: new Decimal(carrito.total).add(diferenciaTotal),
+        },
+      });
+
+      return res.status(200).json({
+        message: "Cantidad incrementada",
+        itemActualizado,
+      });
+    } else {
+      // 1. Actualizar stock: SUMAR cantidad
+      await prisma.tALLA.update({
+        where: { talla_pk: nuevaTalla.talla_pk },
+        data: {
+          cantidad: { increment: cantidad },
+        },
+      });
+
+      console.log(item.cantidad);
+      console.log(cantidad);
+
+      let nuevaCantidad = item.cantidad - cantidad;
+      if (nuevaCantidad < 0) {
+        nuevaCantidad = 0;
+      }
+
+      console.log("nueva cantidad");
+      console.log(nuevaCantidad);
+      
+
+        // 2. Actualizar carrito item: RESTAR cantidad
+        const itemActualizado = await prisma.cARRITO_ITEM.update({
+          where: { carritoItem_pk: Number(itemId) },
+          data: {
+            cantidad: nuevaCantidad,
+            talla_fk: nuevaTalla.talla_pk,
+          },
+          include: { producto: true, talla: true },
+        });
+
+        // 3. Actualizar total del carrito
+        await prisma.cARRITO.update({
+          where: { carrito_pk: carrito.carrito_pk },
+          data: {
+            total: new Decimal(carrito.total).sub(diferenciaTotal),
+          },
+        });
+        return res.status(200).json({
+          message: "Cantidad reducida",
+          itemActualizado,
+        });
+      
+      return res.status(400).json({ message: "Stock insuficiente" });
+    }
+  } catch (error) {
+    console.error("Error al actualizar item del carrito:", error);
+    return res.status(500).json({ message: "Error interno del servidor" });
+  }
+};
+
 export const deleteItemCarrito = async (req: Request, res: Response) => {
   const { carritoId, carritoItemId } = req.params;
 
@@ -455,7 +621,6 @@ export const deleteItemCarrito = async (req: Request, res: Response) => {
         .status(404)
         .json({ message: "Ítem no encontrado en este carrito" });
     }
-  
 
     if (carritoItem.talla_fk) {
       await prisma.tALLA.update({
@@ -467,7 +632,24 @@ export const deleteItemCarrito = async (req: Request, res: Response) => {
         },
       });
     }
-    
+
+    const productoActualizado = await prisma.pRODUCTOS.findUnique({
+      where: { producto_pk: carritoItem.producto_fk },
+      include: { tallas: true },
+    });
+
+    const algunaTallaDisponible = productoActualizado?.tallas.some(
+      (t) => t.cantidad > 0
+    );
+
+    if (productoActualizado?.estado === "Agotado" && algunaTallaDisponible) {
+      await prisma.pRODUCTOS.update({
+        where: { producto_pk: carritoItem.producto_fk },
+        data: {
+          estado: "Disponible",
+        },
+      });
+    }
 
     // Eliminar el ítem
     await prisma.cARRITO_ITEM.delete({
