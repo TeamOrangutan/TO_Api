@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "USUARIO" ADD COLUMN     "estado" TEXT NOT NULL DEFAULT 'Activo';

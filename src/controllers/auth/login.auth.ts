@@ -28,12 +28,19 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
     // Buscar al usuario por correo
     const user = await prisma.uSUARIO.findUnique({
       where: { correo },
+      include: { rol: true },
     });
+    console.log(user);
 
     if (!user) {
       return res.status(400).json({ error: "Usuario no encontrado" });
     }
+    
 
+    if(user.estado == "Inactivo"){
+      return res.status(400).json({ error: "Usuario no encontrado" });
+
+    }
     // Comparar las contraseñas
     const isMatch = await bcrypt.compare(contrasena, user.contrasena);
     if (!isMatch) {
@@ -53,10 +60,6 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
         usuario_fk: user.usuario_pk,
       },
     });
-
-
-    console.log(carrito);
-    
 
     if (!carrito) {
       carrito = await prisma.cARRITO.create({
@@ -79,12 +82,17 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
       { expiresIn: "1h" }
     );
 
-    // Responder con el token JWT
+    await prisma.uSUARIO.update({
+      where: { usuario_pk: user.usuario_pk },
+      data: { ultimoAcceso: new Date() },
+    });
+
     return res.status(200).json({
       message: "Inicio de sesión exitoso",
       token,
       userId: user.usuario_pk,
       carritoId: carrito.carrito_pk,
+      rol: user.rol_fk,
     });
   } catch (error) {
     console.error("Error al iniciar sesión:", error);
@@ -95,7 +103,6 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
 export const requestPasswordReset = async (req: Request, res: Response) => {
   const { correo } = req.body;
 
-  console.log(correo);
 
   try {
     const user = await prisma.uSUARIO.findUnique({ where: { correo } });
@@ -105,7 +112,7 @@ export const requestPasswordReset = async (req: Request, res: Response) => {
     }
 
     const token = crypto.randomBytes(32).toString("hex");
-    const expiry = new Date(Date.now() + 3600000); // 1 hora
+    const expiry = new Date(Date.now() + 3600000); 
 
     await prisma.uSUARIO.update({
       where: { usuario_pk: user.usuario_pk },
@@ -128,9 +135,6 @@ export const requestPasswordReset = async (req: Request, res: Response) => {
 export const resetPassword = async (req: Request, res: Response) => {
   const { token } = req.params;
   const { newPassword } = req.body;
-
-  console.log(token);
-  console.log(newPassword);
 
   try {
     const user = await prisma.uSUARIO.findFirst({

@@ -13,8 +13,6 @@ authRouter.post('/google', googleAuth);
 
 
 
-
-
 authRouter.post("/forgot-password", requestPasswordReset);
 authRouter.post("/reset-password/:token", resetPassword);
 

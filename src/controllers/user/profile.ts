@@ -6,9 +6,6 @@ export const prisma = new PrismaClient();
 export const userProfile = async (req: Request, res: Response) => {
   const { usuarioId } = req.params;
 
-    console.log(usuarioId);
-    
-
   if (!usuarioId) {
     res
       .status(400)
@@ -24,6 +21,7 @@ export const userProfile = async (req: Request, res: Response) => {
       select: {
         usuario_pk: true,
         correo: true,
+        telefono: true,
         rol: {
           select: {
             descripcion: true,
@@ -34,29 +32,32 @@ export const userProfile = async (req: Request, res: Response) => {
             nombres: true,
             apellidos: true,
             direccion: true,
-            imagenPerfil: true
+            imagenPerfil: true,
+            
           },
         },
       },
     });
+    console.log(usuario);
+
     if (!usuario) {
       return res.status(404).json({ message: "Usuario no encontrado" });
     }
 
     return res.status(200).json(usuario);
   } catch (error) {
-   console.error("Error al obtener el usuario:", error);
+    console.error("Error al obtener el usuario:", error);
     return res.status(500).json({ message: "Error del servidor" });
-
   }
 };
 
-
 export const updateUserData = async (req: Request, res: Response) => {
   const { usuarioId } = req.params;
-  const { nombres, apellidos, direccion, correo } = req.body;
+  const { nombres, apellidos, direccion, correo, telefono } = req.body;
 
-  const imagenPerfil = req.file ? `uploads/user/${req.file.filename}` : undefined;
+  const imagenPerfil = req.file
+    ? `uploads/user/${req.file.filename}`
+    : undefined;
 
   try {
     // Verificar si el correo ya está en uso por otro usuario (excepto el actual)
@@ -68,7 +69,9 @@ export const updateUserData = async (req: Request, res: Response) => {
     });
 
     if (existingUser) {
-      return res.status(400).json({ error: "Este correo ya está en uso por otro usuario." });
+      return res
+        .status(400)
+        .json({ error: "Este correo ya está en uso por otro usuario." });
     }
 
     // Actualiza datos de persona
@@ -78,6 +81,7 @@ export const updateUserData = async (req: Request, res: Response) => {
         nombres,
         apellidos,
         direccion,
+        
         ...(imagenPerfil && { imagenPerfil }),
       },
     });
@@ -85,7 +89,7 @@ export const updateUserData = async (req: Request, res: Response) => {
     // Actualiza el correo en USUARIO
     const updatedUsuario = await prisma.uSUARIO.update({
       where: { usuario_pk: Number(usuarioId) },
-      data: { correo },
+      data: { correo, telefono },
     });
 
     return res.status(200).json({
@@ -95,6 +99,8 @@ export const updateUserData = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Error actualizando datos:", error);
-    return res.status(500).json({ error: "Error al actualizar los datos del usuario" });
+    return res
+      .status(500)
+      .json({ error: "Error al actualizar los datos del usuario" });
   }
 };

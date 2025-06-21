@@ -17,34 +17,41 @@ export const googleAuth = async (req: Request, res: Response): Promise<Response>
 
     const payload = ticket.getPayload();
     if (!payload) {
-      return res.status(400).json({ message: "Token inválido" });
+      return res.status(400).json({ error: "Token inválido" });
     }
 
     const { email, given_name, family_name, picture } = payload;
 
     if (!email) {
-      return res.status(400).json({ message: "No se recibió un email válido desde Google" });
+      return res.status(400).json({ error: "No se recibió un email válido desde Google" });
     }
 
     let user = await prisma.uSUARIO.findUnique({
       where: { correo: email },
+      include: {rol: true},
     });
 
+    if(user?.estado == "Inactivo"){
+       return res.status(401).json({ error: "Usuario no encontrado" });
+    }
     if (!user) {
       const defaultRole = await prisma.rOL.findFirst({
         where: { descripcion: "User" },
       });
 
       if (!defaultRole) {
-        return res.status(500).json({ message: "Rol por defecto no encontrado" });
+        return res.status(401).json({ error: "Rol por defecto no encontrado" });
       }
+      
 
       user = await prisma.uSUARIO.create({
         data: {
+          estado: "Activo",
           correo: email,
           contrasena: "google_oauth_default_password",
           rol_fk: defaultRole.rol_pk,
         },
+      include: { rol: true },
       });
 
       await prisma.pERSONA.create({
@@ -88,15 +95,22 @@ export const googleAuth = async (req: Request, res: Response): Promise<Response>
       }
     );
 
+
+    await prisma.uSUARIO.update({
+      where: { usuario_pk: user.usuario_pk },
+      data: { ultimoAcceso: new Date() },
+    });
+
     return res.status(200).json({
       message: "Autenticación exitosa",
       token: jwtToken,
       userId: user.usuario_pk,
       carritoId: carrito.carrito_pk,
+      rol: user.rol.rol_pk,
     });
 
   } catch (err) {
     console.error("Error en login con Google:", err);
-    return res.status(401).json({ message: "Error de autenticación con Google" });
+    return res.status(401).json({ error: "Error de autenticación con Google" });
   }
 };

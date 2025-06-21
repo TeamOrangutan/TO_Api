@@ -9,6 +9,7 @@ import {
   getCarrito,
   deleteItemCarrito,
   updateItemCarrito,
+  getResumenInventario,
 
 } from "../../controllers/store/product";
 import path from "path";
@@ -30,6 +31,10 @@ const router = express.Router();
 // Rutas de productos
 router.post("/", createProduct);
 router.get("/",getProducts);
+
+router.get("/resumenInventario",getResumenInventario);
+
+
 router.get("/:id",getProductById);
 router.put("/:id", authenticate,upload.array("images", 2), updateProductById);
 router.delete("/:id", deleteProductById);
@@ -39,6 +44,7 @@ router.put("/updateProductItem/:carritoItemId/", updateItemCarrito);
 
 
 router.get("/carrito/:usuarioId", authenticate,getCarrito);  
+
 
 router.post("/carrito", authenticate,async (req, res) => {
   try {

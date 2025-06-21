@@ -1,3 +1,4 @@
+import { getAllUsers, updateStateUser } from "../../controllers/user/users";
 import { authenticate } from "../../controllers/auth/auth.middleware";
 import { updateUserData, userProfile } from "../../controllers/user/profile";
 import express from "express";
@@ -30,7 +31,12 @@ export const uploadUsuario = multer({ storage: storageUsuario });
 
 const router = express.Router();
 
-router.get("/profile/:usuarioId", authenticate ,userProfile);
+router.get("/profile/:usuarioId", authenticate, userProfile);
+
+router.put("/State/", updateStateUser);
+
+router.get("/AllUsers/", getAllUsers);
+
 
 router.put(
   "/updateuserdata/:usuarioId",

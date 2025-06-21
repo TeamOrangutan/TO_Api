@@ -79,7 +79,7 @@ export const createProduct = (req: Request, res: Response) => {
 
       // Validar que cada talla tenga 'nombre' y 'cantidad'
       for (let talla of tallasData) {
-        if (!talla.nombre || !talla.cantidad) {
+        if (!talla.name || !talla.stock) {
           return res
             .status(400)
             .json({ error: "Cada talla debe tener un nombre y una cantidad." });
@@ -98,8 +98,8 @@ export const createProduct = (req: Request, res: Response) => {
 
       // Procesar las tallas
       const tallasRecords = tallasData.map((talla: any) => ({
-        nombre: talla.nombre,
-        cantidad: talla.cantidad,
+        nombre: talla.name,
+        cantidad: talla.stock,
         producto_fk: producto.producto_pk,
       }));
 
@@ -160,7 +160,6 @@ export const createProduct = (req: Request, res: Response) => {
 };
 
 export const getProducts = async (_req: Request, res: Response) => {
-
   try {
     // Obtener datos de las imágenes
     const imagedata = await prisma.iMAGEN.findMany({
@@ -176,6 +175,7 @@ export const getProducts = async (_req: Request, res: Response) => {
         producto_pk: true,
         nombre: true,
         precioVenta: true,
+        precioFabricacion: true,
         descripcion: true,
         estado: true,
         registros: {
@@ -184,7 +184,7 @@ export const getProducts = async (_req: Request, res: Response) => {
           },
         },
         tallas: {
-          select: { nombre: true }, // Seleccionamos las tallas relacionadas
+          select: { nombre: true, cantidad: true }, // Seleccionamos las tallas relacionadas
         },
       },
     });
@@ -205,6 +205,7 @@ export const getProducts = async (_req: Request, res: Response) => {
         estado: product.estado,
         description: product.descripcion,
         price: product.precioVenta,
+        precioFabricacion: product.precioFabricacion,
         hoverPath: productImages[1] || "",
         fecha_de_publicacion: publicationDate,
         tallas: product.tallas.map((t) => t.nombre), // Agregamos las tallas
@@ -557,30 +558,29 @@ export const updateItemCarrito = async (
 
       console.log("nueva cantidad");
       console.log(nuevaCantidad);
-      
 
-        // 2. Actualizar carrito item: RESTAR cantidad
-        const itemActualizado = await prisma.cARRITO_ITEM.update({
-          where: { carritoItem_pk: Number(itemId) },
-          data: {
-            cantidad: nuevaCantidad,
-            talla_fk: nuevaTalla.talla_pk,
-          },
-          include: { producto: true, talla: true },
-        });
+      // 2. Actualizar carrito item: RESTAR cantidad
+      const itemActualizado = await prisma.cARRITO_ITEM.update({
+        where: { carritoItem_pk: Number(itemId) },
+        data: {
+          cantidad: nuevaCantidad,
+          talla_fk: nuevaTalla.talla_pk,
+        },
+        include: { producto: true, talla: true },
+      });
 
-        // 3. Actualizar total del carrito
-        await prisma.cARRITO.update({
-          where: { carrito_pk: carrito.carrito_pk },
-          data: {
-            total: new Decimal(carrito.total).sub(diferenciaTotal),
-          },
-        });
-        return res.status(200).json({
-          message: "Cantidad reducida",
-          itemActualizado,
-        });
-      
+      // 3. Actualizar total del carrito
+      await prisma.cARRITO.update({
+        where: { carrito_pk: carrito.carrito_pk },
+        data: {
+          total: new Decimal(carrito.total).sub(diferenciaTotal),
+        },
+      });
+      return res.status(200).json({
+        message: "Cantidad reducida",
+        itemActualizado,
+      });
+
       return res.status(400).json({ message: "Stock insuficiente" });
     }
   } catch (error) {
@@ -718,6 +718,7 @@ export const getProductById = async (
         producto_pk: true,
         nombre: true,
         precioVenta: true,
+        precioFabricacion: true,
         descripcion: true,
         estado: true,
         registros: {
@@ -762,6 +763,7 @@ export const getProductById = async (
       estado: product.estado,
       description: product.descripcion,
       price: product.precioVenta,
+      precioFabricacion: product.precioFabricacion,
       hoverPath: productImages[1] || "",
       fecha_de_publicacion: publicationDate,
       tallas: product.tallas.map((talla) => ({
@@ -777,7 +779,7 @@ export const getProductById = async (
 };
 
 export const updateProductById = async (req: Request, res: Response) => {
-  const { nombre, descripcion, precioVenta, estado, tallas } = req.body;
+  const { nombre, descripcion, precioVenta, precioFabricacion, tallas, estado } = req.body;
   const { id } = req.params;
 
   console.log("Datos recibidos:", req.body);
@@ -816,8 +818,9 @@ export const updateProductById = async (req: Request, res: Response) => {
       data: {
         nombre,
         precioVenta,
+        precioFabricacion,
         descripcion,
-        estado,
+        estado
       },
     });
 
@@ -870,15 +873,33 @@ export const updateProductById = async (req: Request, res: Response) => {
 export const deleteProductById = async (req: Request, res: Response) => {
   const { id } = req.params;
 
-  await prismaclient.iMAGEN.deleteMany({
-    where: {
-      producto_fk: Number(id),
-    },
-  });
-  const data = await prismaclient.pRODUCTOS.delete({
+  const data = await prismaclient.pRODUCTOS.update({
     where: {
       producto_pk: Number(id),
     },
+    data: {
+      estado: 'Agotado'
+    }
   });
   res.json(data);
+};
+
+export const getResumenInventario = async (_req: Request, res: Response) => {
+  try {
+    const totalProductos = await prisma.pRODUCTOS.count();
+    const disponibles = await prisma.pRODUCTOS.count({
+      where: { estado: "Disponible" },
+    });
+    const agotados = await prisma.pRODUCTOS.count({
+      where: { estado: "Agotado" },
+    });
+    res.json({
+      totalProductos,
+      disponibles,
+      agotados,
+    });
+  } catch (error) {
+    console.error("Error al obtener resumen de inventario:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
 };

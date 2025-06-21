@@ -15,17 +15,21 @@ model ROL {
 }
 
 model USUARIO {
-  usuario_pk Int       @id @default(autoincrement())
-  correo     String    @unique
-  contrasena String
+  usuario_pk        Int       @id @default(autoincrement())
+  correo            String    @unique
+  contrasena        String
+  telefono          String?   
   passwordChangedAt DateTime?
-  rol_fk     Int
-  rol        ROL       @relation(fields: [rol_fk], references: [rol_pk])
-  resetToken       String?      // token de recuperación
-  resetTokenExpiry DateTime?    // expiración del token
-  persona    PERSONA?
-  carrito    CARRITO?
-  ordenes    ORDENES[]
+  rol_fk            Int
+  rol               ROL       @relation(fields: [rol_fk], references: [rol_pk])
+  resetToken        String? // token de recuperación
+  resetTokenExpiry  DateTime? // expiración del token
+  estado            String    @default("Activo")
+  ultimoAcceso      DateTime?
+  persona           PERSONA?
+  carrito           CARRITO?
+  ordenes           ORDENES[]
+  reportesQuincenales REPORTE_QUINCENAL[]
 }
 
 model PERSONA {
@@ -111,11 +115,11 @@ model Factura {
   orden_fk      ORDENES       @relation("OrdenFactura", fields: [orden_id], references: [orden_pk])
   fecha         DateTime      @default(now())
   nombreCliente String
-  direccion      String?
-  telefono    String?
-  metodoPago      String?
+  direccion     String?
+  telefono      String?
+  metodoPago    String?
   total         Float
-  folio         String   @unique
+  folio         String        @unique
   facItems      FacturaItem[]
 }
 
@@ -136,20 +140,58 @@ model FacturaItem {
 // }
 
 model PRODUCTOS {
-  producto_pk   Int                @id @default(autoincrement())
-  nombre        String
-  precioVenta   Decimal
-  descripcion   String
-  estado        String             @default("disponible")
-  tallas        TALLA[] // Relación con las tallas
-  inventarios   INVENTARIO[]
-  registros     REGISTRO[]
-  serigrafiados PRO_SERIGRAFIADO[]
-  posters       PRO_POSTERS[]
-  impresiones   PRO_IMPRESION[]
-  imagenes      IMAGEN[]
-  carritoItems  CARRITO_ITEM[] // Relación inversa con CARRITO_ITEM
-  ordenItem     ORDEN_ITEM[]
+  producto_pk       Int                @id @default(autoincrement())
+  nombre            String
+  precioVenta       Decimal
+  precioFabricacion Decimal            @default(0.0)
+  descripcion       String
+  estado            String             @default("disponible")
+  tallas            TALLA[] // Relación con las tallas
+  inventarios       INVENTARIO[]
+  registros         REGISTRO[]
+  serigrafiados     PRO_SERIGRAFIADO[]
+  posters           PRO_POSTERS[]
+  impresiones       PRO_IMPRESION[]
+  imagenes          IMAGEN[]
+  carritoItems      CARRITO_ITEM[] // Relación inversa con CARRITO_ITEM
+  ordenItem         ORDEN_ITEM[]
+}
+
+
+model REPORTE_QUINCENAL {
+  reporte_pk           Int      @id @default(autoincrement())
+  codigo               String   @unique   
+  fecha_generacion     DateTime @default(now())
+  desde                DateTime 
+  hasta                DateTime
+  usuario_fk           Int?    
+  usuario              USUARIO? @relation(fields: [usuario_fk], references: [usuario_pk])
+
+  totalVentas          Float
+  productosVendidos    Int
+  ordenesProcesadas    Int
+  promedioDiario       Float
+
+  ventasDiarias        VentaDiaria[]         
+  productosAnalisis    ProductoAnalisis[]   
+}
+
+model VentaDiaria {
+  ventaDiaria_pk Int      @id @default(autoincrement())
+  fecha          DateTime
+  totalVentas    Float
+  reporte_fk     Int
+  reporte        REPORTE_QUINCENAL @relation(fields: [reporte_fk], references: [reporte_pk])
+}
+
+model ProductoAnalisis {
+  productoAnalisis_pk Int    @id @default(autoincrement())
+  nombreProducto       String
+  cantidadVendida      Int
+  montoTotal           Float
+  porcentaje          Float
+  reporte_fk           Int
+  reporte              REPORTE_QUINCENAL @relation(fields: [reporte_fk], references: [reporte_pk])
 }
 
 model TALLA {

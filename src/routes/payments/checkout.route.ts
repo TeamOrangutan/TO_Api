@@ -275,8 +275,6 @@ paypalRouter.post(
       // Aquí deberías consultar la última factura para sacar el número, ejemplo hardcode:
       const folio = `FACT-${año}-${(count + 1).toString().padStart(3, "0")}`;
 
-      
-
       const shippingAddress = purchaseUnits[0]?.shipping?.address || {}; // Puede no venir, así que manejar caso null
       const direccionCompleta = [
         shippingAddress.address_line_1,
@@ -295,13 +293,21 @@ paypalRouter.post(
         ? "PayPal"
         : "Desconocido";
 
-    const telefono = payer.phone?.phone_number?.national_number || null;
+      const telefono = payer.phone?.phone_number?.national_number || null;
+
+      const persona = await prisma.pERSONA.findUnique({
+        where: { usuario_fk: userId },
+      });
+
+      const nombreCliente = persona
+        ? `${persona.nombres} ${persona.apellidos}`
+        : "Cliente";
 
       const factura = await prisma.factura.create({
         data: {
           orden_id: orden.orden_pk,
           fecha: new Date(),
-          nombreCliente: orden.payerName || "Cliente",
+          nombreCliente: nombreCliente|| "Cliente",
           total: orden.total,
           folio,
           direccion: direccionCompleta || null,

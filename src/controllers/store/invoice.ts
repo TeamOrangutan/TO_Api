@@ -66,63 +66,62 @@ export const getInvoiceById = async (req: Request, res: Response) => {
   const { facturaId } = req.params;
 
   try {
-   const facturas = await prisma.factura.findMany({
-  where: {
-    factura_pk: Number(facturaId)
-  },
-  select: {
-    factura_pk: true,
-    orden_id: true,
-    fecha: true,
-    nombreCliente: true,
-    direccion: true,
-    metodoPago: true,
-    total: true,
-    folio: true,
-    telefono: true, // 👈 AÑADIDO
-
-    orden_fk: true, // Puedes personalizar si necesitas solo ciertos campos
-    facItems: {
+    const facturas = await prisma.factura.findMany({
+      where: {
+        factura_pk: Number(facturaId),
+      },
       select: {
-        factura_item_pk: true,
-        factura_id: true,
-        orden_item_id: true,
-        orden_item_fk: {
+        factura_pk: true,
+        orden_id: true,
+        fecha: true,
+        nombreCliente: true,
+        direccion: true,
+        metodoPago: true,
+        total: true,
+        folio: true,
+        telefono: true,
+
+        orden_fk: true,
+        facItems: {
           select: {
-            orden_item_pk: true,
-            cantidad: true,
-            precio_unitario_usd: true,
-            subtotal_usd: true,
-            producto: {
+            factura_item_pk: true,
+            factura_id: true,
+            orden_item_id: true,
+            orden_item_fk: {
               select: {
-                producto_pk: true,
-                nombre: true,
-                descripcion: true,
-                estado: true,
-                imagenes: {
-                  select: {
-                    url: true,
-                  }
-                }
-              },
-            },
-            talla: {
-              select: {
-                talla_pk: true,
-                nombre: true,
+                orden_item_pk: true,
                 cantidad: true,
+                precio_unitario_usd: true,
+                subtotal_usd: true,
+                producto: {
+                  select: {
+                    producto_pk: true,
+                    nombre: true,
+                    descripcion: true,
+                    estado: true,
+                    imagenes: {
+                      select: {
+                        url: true,
+                      },
+                    },
+                  },
+                },
+                talla: {
+                  select: {
+                    talla_pk: true,
+                    nombre: true,
+                    cantidad: true,
+                  },
+                },
               },
             },
           },
         },
       },
-    },
-  },
-  orderBy: {
-    fecha: "desc",
-  },
-});
-
+      orderBy: {
+        fecha: "desc",
+      },
+    });
 
     const facturasConPaths = facturas.map((factura) => ({
       ...factura,

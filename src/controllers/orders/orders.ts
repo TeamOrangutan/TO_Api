@@ -21,9 +21,19 @@ export const getAllOrders = async (
         usuario_fk: Number(usuarioId),
       },
       orderBy: {
-        createdAt: 'desc'
+        createdAt: "desc",
       },
       include: {
+        usuario: {
+          select: {
+            persona: {
+              select: {
+                nombres: true,
+                apellidos: true,
+              },
+            },
+          },
+        },
         ordenItem: {
           include: {
             producto: true,
@@ -31,10 +41,10 @@ export const getAllOrders = async (
           },
         },
         factura: {
-            select: {
-                factura_pk: true
-            }
-        }
+          select: {
+            factura_pk: true,
+          },
+        },
       },
     });
 
@@ -48,5 +58,60 @@ export const getAllOrders = async (
     });
   } catch (error) {
     res.status(500).json({ error: "Error interno al obtener las ordenes" });
+  }
+};
+
+export const getResumenOrdenes = async (__req: Request, res: Response) => {
+  try {
+    const ordenes = await prisma.oRDENES.findMany({
+      include: {
+        factura: true,
+        usuario: {
+          select: {
+            persona: {
+              select: {
+                nombres: true,
+                apellidos: true,
+              },
+            },
+          },
+        },
+        ordenItem: {
+          include: {
+            producto: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    const resumen = ordenes.map((orden) => {
+      const productosNombres = orden.ordenItem
+        .map((item) => item.producto.nombre)
+        .join(", ");
+      const cantidadTotal = orden.ordenItem.reduce(
+        (sum, item) => sum + item.cantidad,
+        0
+      );
+
+      return {
+
+        factura: orden.factura?.factura_pk,
+        codigo: orden.orderId,
+        cliente: orden.usuario.persona?.nombres + " " + orden.usuario.persona?.apellidos || "Desconocido",
+        productos: productosNombres,
+        cantidad: cantidadTotal,
+        estado: orden.estado,
+        monto: `${orden.total.toFixed(2)} ${orden.moneda || "C$"}`,
+        fecha: orden.createdAt,
+      };
+    });
+
+    res.json({ data: resumen });
+  } catch (error) {
+    console.error("Error al obtener resumen de órdenes:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 };
