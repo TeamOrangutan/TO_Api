@@ -36,3 +36,11 @@ app.listen(PORT, () => {
   console.log(`App listening on port ${PORT}`);
   console.log(`Swagger Docs available at http://localhost:${PORT}/api-docs`);
 });
+
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled Rejection:', reason);
+});
