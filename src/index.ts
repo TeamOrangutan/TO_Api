@@ -18,7 +18,7 @@ app.use(express.json());
 
 export const prismaclient = new PrismaClient();
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 
 app.get('/', (_req, res) => {
   res.send('API is running');
