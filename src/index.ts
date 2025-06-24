@@ -27,9 +27,6 @@ app.use("/api/auth", authRouter);
 app.use("/api/payments", paypalRouter);
 app.use("/api/orders", orderRoute);
 
-app.get("/", (_req, res) => {
-  res.send("API is running");
-});
 
 const PORT = process.env.PORT;
 
