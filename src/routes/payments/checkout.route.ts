@@ -172,7 +172,7 @@ paypalRouter.post("/orders", async (req: Request, res: Response) => {
           value: precioUSD.toFixed(2),
         },
         description: item.producto.descripcion || "",
-        sku: `PROD-${item.producto_fk}`,
+        sku: `PROD-${item.producto_fk}`, // <-- Corrige aquí, ahora es string
       };
     });
 
@@ -235,13 +235,13 @@ paypalRouter.post(
         },
       });
 
-      if (!carrito?.items) {
+      if (!carrito?.items || carrito.items.length === 0) {
         throw new Error("El carrito no tiene ítems cargados");
       }
 
       const ordenItemsData = [];
 
-      for (const item of carrito?.items) {
+      for (const item of carrito.items) {
         const precioCordobas = item.producto.precioVenta.toNumber();
         const tipoCambio = 36.84;
         const precioUSD = parseFloat((precioCordobas / tipoCambio).toFixed(2));
@@ -273,7 +273,12 @@ paypalRouter.post(
         },
       });
       // Aquí deberías consultar la última factura para sacar el número, ejemplo hardcode:
-      const folio = `FACT-${año}-${(count + 1).toString().padStart(3, "0")}`;
+      const random = Math.floor(Math.random() * 1000)
+        .toString()
+        .padStart(3, "0");
+      const folio = `FACT-${año}-${(count + 1)
+        .toString()
+        .padStart(3, "0")}-${random}`;
 
       const shippingAddress = purchaseUnits[0]?.shipping?.address || {}; // Puede no venir, así que manejar caso null
       const direccionCompleta = [
@@ -307,7 +312,7 @@ paypalRouter.post(
         data: {
           orden_id: orden.orden_pk,
           fecha: new Date(),
-          nombreCliente: nombreCliente|| "Cliente",
+          nombreCliente: nombreCliente || "Cliente",
           total: orden.total,
           folio,
           direccion: direccionCompleta || null,
@@ -324,6 +329,17 @@ paypalRouter.post(
             orden_item_id: ordenItem.orden_item_pk,
           },
         });
+      }
+
+      for (const item of carrito.items) {
+        if (item.talla_fk) {
+          await prisma.tALLA.update({
+            where: { talla_pk: item.talla_fk },
+            data: {
+              cantidad: { decrement: item.cantidad },
+            },
+          });
+        }
       }
 
       if (carrito) {

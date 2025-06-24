@@ -218,7 +218,6 @@ export const getProducts = async (_req: Request, res: Response) => {
     res.status(500).json({ error: "Error al obtener los productos" });
   }
 };
-
 export const addToCart = async (
   req: Request,
   res: Response
@@ -264,7 +263,6 @@ export const addToCart = async (
 
     let tallaSeleccionada = null;
     if (talla) {
-      // <- solo si mandan talla
       tallaSeleccionada = producto.tallas.find(
         (t) => t.nombre.toLowerCase() === talla.toLowerCase()
       );
@@ -274,11 +272,27 @@ export const addToCart = async (
           .status(404)
           .json({ message: "Talla no encontrada para este producto" });
       }
-      if (tallaSeleccionada?.cantidad < cantidad) {
-        return res.status(400).json({
-          message: "No hay suficiente stock disponible para esta talla",
-        });
-      }
+    }
+
+    // Busca si ya existe ese producto/talla en el carrito
+    let carritoItemExistente = await prisma.cARRITO_ITEM.findFirst({
+      where: {
+        carrito_fk: carrito.carrito_pk,
+        producto_fk: Number(productId),
+        talla_fk: tallaSeleccionada ? tallaSeleccionada.talla_pk : null,
+      },
+    });
+
+    let nuevaCantidad = Number(cantidad);
+    if (carritoItemExistente) {
+      nuevaCantidad = carritoItemExistente.cantidad + Number(cantidad);
+    }
+
+    // Valida stock sumando cantidades
+    if (tallaSeleccionada && nuevaCantidad > tallaSeleccionada.cantidad) {
+      return res.status(400).json({
+        message: "No hay suficiente stock disponible para esta talla",
+      });
     }
 
     const totalProducto = new Decimal(cantidad).mul(
@@ -292,29 +306,36 @@ export const addToCart = async (
       },
     });
 
-    const carritoItem = await prisma.cARRITO_ITEM.create({
-      data: {
-        cantidad: Number(cantidad),
-        producto_fk: Number(productId),
-        carrito_fk: carrito.carrito_pk,
-        talla_fk: tallaSeleccionada ? tallaSeleccionada.talla_pk : null, // <- puede ser null
-      },
-      include: {
-        producto: true,
-        talla: true,
-      },
-    });
-
-    if (tallaSeleccionada) {
-      await prisma.tALLA.update({
-        where: { talla_pk: tallaSeleccionada.talla_pk },
+    let carritoItem;
+    if (carritoItemExistente) {
+      // Suma la cantidad al existente
+      carritoItem = await prisma.cARRITO_ITEM.update({
+        where: { carritoItem_pk: carritoItemExistente.carritoItem_pk },
         data: {
-          cantidad: {
-            decrement: Number(cantidad),
-          },
+          cantidad: nuevaCantidad,
+        },
+        include: {
+          producto: true,
+          talla: true,
         },
       });
+    } else {
+      // Si no existe, crea el ítem normalmente
+      carritoItem = await prisma.cARRITO_ITEM.create({
+        data: {
+          cantidad: Number(cantidad),
+          producto_fk: Number(productId),
+          carrito_fk: carrito.carrito_pk,
+          talla_fk: tallaSeleccionada ? tallaSeleccionada.talla_pk : null,
+        },
+        include: {
+          producto: true,
+          talla: true,
+        },
+      });
+    }
 
+    if (tallaSeleccionada) {
       // Verifica si todas las tallas tienen cantidad 0
       const tallasDelProducto = await prisma.tALLA.findMany({
         where: { producto_fk: producto.producto_pk },
@@ -333,7 +354,9 @@ export const addToCart = async (
     }
 
     return res.status(200).json({
-      message: "Producto agregado al carrito correctamente",
+      message: carritoItemExistente
+        ? "Cantidad actualizada en el carrito correctamente"
+        : "Producto agregado al carrito correctamente",
       carrito: {
         id: carrito.carrito_pk,
         total: carrito.total,
@@ -449,6 +472,7 @@ export const updateItemCarrito = async (
   console.log(cantidad);
   console.log(talla);
   console.log(action);
+  console.log(itemId);
 
   if (!itemId || !action) {
     return res.status(400).json({ message: "Faltan datos necesarios" });
@@ -508,14 +532,15 @@ export const updateItemCarrito = async (
       if (nuevaTalla.cantidad < cantidad) {
         return res.status(400).json({ message: "Stock insuficiente" });
       }
-
-      // 1. Actualizar stock: RESTAR cantidad
-      await prisma.tALLA.update({
-        where: { talla_pk: nuevaTalla.talla_pk },
-        data: {
-          cantidad: { decrement: cantidad },
-        },
-      });
+      // if (finalize) {
+      //   // 1. Actualizar stock: RESTAR cantidad
+      //   await prisma.tALLA.update({
+      //     where: { talla_pk: nuevaTalla.talla_pk },
+      //     data: {
+      //       cantidad: { decrement: cantidad },
+      //     },
+      //   });
+      // }
 
       // 2. Actualizar carrito item: SUMAR cantidad
       const itemActualizado = await prisma.cARRITO_ITEM.update({
@@ -540,13 +565,15 @@ export const updateItemCarrito = async (
         itemActualizado,
       });
     } else {
-      // 1. Actualizar stock: SUMAR cantidad
-      await prisma.tALLA.update({
-        where: { talla_pk: nuevaTalla.talla_pk },
-        data: {
-          cantidad: { increment: cantidad },
-        },
-      });
+      // if (finalize) {
+      //   // 1. Actualizar stock: SUMAR cantidad
+      //   await prisma.tALLA.update({
+      //     where: { talla_pk: nuevaTalla.talla_pk },
+      //     data: {
+      //       cantidad: { increment: cantidad },
+      //     },
+      //   });
+      // }
 
       console.log(item.cantidad);
       console.log(cantidad);
@@ -622,16 +649,7 @@ export const deleteItemCarrito = async (req: Request, res: Response) => {
         .json({ message: "Ítem no encontrado en este carrito" });
     }
 
-    if (carritoItem.talla_fk) {
-      await prisma.tALLA.update({
-        where: { talla_pk: carritoItem.talla_fk },
-        data: {
-          cantidad: {
-            increment: carritoItem.cantidad,
-          },
-        },
-      });
-    }
+  
 
     const productoActualizado = await prisma.pRODUCTOS.findUnique({
       where: { producto_pk: carritoItem.producto_fk },
@@ -779,7 +797,14 @@ export const getProductById = async (
 };
 
 export const updateProductById = async (req: Request, res: Response) => {
-  const { nombre, descripcion, precioVenta, precioFabricacion, tallas, estado } = req.body;
+  const {
+    nombre,
+    descripcion,
+    precioVenta,
+    precioFabricacion,
+    tallas,
+    estado,
+  } = req.body;
   const { id } = req.params;
 
   console.log("Datos recibidos:", req.body);
@@ -820,7 +845,7 @@ export const updateProductById = async (req: Request, res: Response) => {
         precioVenta,
         precioFabricacion,
         descripcion,
-        estado
+        estado,
       },
     });
 
@@ -878,8 +903,8 @@ export const deleteProductById = async (req: Request, res: Response) => {
       producto_pk: Number(id),
     },
     data: {
-      estado: 'Agotado'
-    }
+      estado: "Agotado",
+    },
   });
   res.json(data);
 };
