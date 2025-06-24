@@ -32,9 +32,9 @@ app.get("/", (_req, res) => {
 });
 
 const PORT = process.env.PORT;
-console.log("🚀 PORT from env:", process.env.PORT);
+
 if (!PORT) {
-  console.error("PORT env variable not set.");
+  console.error('❌ Environment variable PORT not defined.');
   process.exit(1);
 }
 
