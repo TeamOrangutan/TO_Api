@@ -339,6 +339,20 @@ paypalRouter.post(
               cantidad: { decrement: item.cantidad },
             },
           });
+
+          // Verificar si todas las tallas del producto están en 0
+          const tallasProducto = await prisma.tALLA.findMany({
+            where: { producto_fk: item.producto_fk },
+          });
+
+          const todasAgotadas = tallasProducto.every((t) => t.cantidad === 0);
+
+          if (tallasProducto.length > 0 && todasAgotadas) {
+            await prisma.pRODUCTOS.update({
+              where: { producto_pk: item.producto_fk },
+              data: { estado: "Agotado" },
+            });
+          }
         }
       }
 

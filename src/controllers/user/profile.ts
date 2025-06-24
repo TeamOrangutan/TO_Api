@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
+import supabase from "../../utils/supabaseClient";
 
 export const prisma = new PrismaClient();
 
@@ -33,7 +34,6 @@ export const userProfile = async (req: Request, res: Response) => {
             apellidos: true,
             direccion: true,
             imagenPerfil: true,
-            
           },
         },
       },
@@ -55,9 +55,33 @@ export const updateUserData = async (req: Request, res: Response) => {
   const { usuarioId } = req.params;
   const { nombres, apellidos, direccion, correo, telefono } = req.body;
 
-  const imagenPerfil = req.file
-    ? `uploads/user/${req.file.filename}`
-    : undefined;
+  let imagenPerfilUrl: string | undefined;
+
+  if (req.file) {
+    const validTypes = ["image/jpeg", "image/png", "image/gif"];
+    if (!validTypes.includes(req.file.mimetype)) {
+      return res
+        .status(400)
+        .json({ error: "Archivo no es una imagen válida." });
+    }
+
+    const fileName = `avatar-${Date.now()}-${req.file.originalname}`;
+    const filePath = `${fileName}`; // <-- carpeta dentro del bucket avatar
+
+    const { error: uploadError } = await supabase.storage
+      .from("avatar")
+      .upload(filePath, req.file.buffer, { contentType: req.file.mimetype });
+
+    if (uploadError) {
+      console.error("Error subiendo imagen a Supabase:", uploadError);
+      return res
+        .status(500)
+        .json({ error: "Error al subir imagen de perfil." });
+    }
+
+    const { data } = supabase.storage.from("avatar").getPublicUrl(filePath);
+    imagenPerfilUrl = data.publicUrl;
+  }
 
   try {
     // Verificar si el correo ya está en uso por otro usuario (excepto el actual)
@@ -81,8 +105,7 @@ export const updateUserData = async (req: Request, res: Response) => {
         nombres,
         apellidos,
         direccion,
-        
-        ...(imagenPerfil && { imagenPerfil }),
+        ...(imagenPerfilUrl && { imagenPerfil: imagenPerfilUrl }),
       },
     });
 

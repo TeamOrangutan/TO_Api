@@ -2,32 +2,32 @@ import { getAllUsers, updateStateUser } from "../../controllers/user/users";
 import { authenticate } from "../../controllers/auth/auth.middleware";
 import { updateUserData, userProfile } from "../../controllers/user/profile";
 import express from "express";
-import multer from "multer";
 import path from "path";
+import { upload } from "../../utils/multer";
 
-const storageUsuario = multer.diskStorage({
-  destination: function (_req, _file, cb) {
-    cb(null, path.join(__dirname, "../../../uploads/usuarios"));
-  },
-  filename: function (req, file, cb) {
-    const { nombres, apellidos } = req.body;
+// const storageUsuario = multer.diskStorage({
+//   destination: function (_req, _file, cb) {
+//     cb(null, path.join(__dirname, "../../../uploads/usuarios"));
+//   },
+//   filename: function (req, file, cb) {
+//     const { nombres, apellidos } = req.body;
 
-    const nombreLimpio = nombres
-      ? nombres.trim().toLowerCase().replace(/\s+/g, "-")
-      : "user";
-    const apellidoLimpio = apellidos
-      ? apellidos.trim().toLowerCase().replace(/\s+/g, "-")
-      : "profile";
+//     const nombreLimpio = nombres
+//       ? nombres.trim().toLowerCase().replace(/\s+/g, "-")
+//       : "user";
+//     const apellidoLimpio = apellidos
+//       ? apellidos.trim().toLowerCase().replace(/\s+/g, "-")
+//       : "profile";
 
-    const extension = path.extname(file.originalname);
+//     const extension = path.extname(file.originalname);
 
-    const nombreArchivo = `${nombreLimpio}-${apellidoLimpio}-${Date.now()}${extension}`;
+//     const nombreArchivo = `${nombreLimpio}-${apellidoLimpio}-${Date.now()}${extension}`;
 
-    cb(null, nombreArchivo);
-  },
-});
+//     cb(null, nombreArchivo);
+//   },
+// });
 
-export const uploadUsuario = multer({ storage: storageUsuario });
+// export const uploadUsuario = multer({ storage: storageUsuario });
 
 const router = express.Router();
 
@@ -37,10 +37,9 @@ router.put("/State/", updateStateUser);
 
 router.get("/AllUsers/", getAllUsers);
 
-
 router.put(
   "/updateuserdata/:usuarioId",
-  uploadUsuario.single("imagenPerfil"),
+  upload.single("imagenPerfil"),
   updateUserData
 );
 

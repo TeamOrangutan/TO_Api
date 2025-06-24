@@ -12,20 +12,9 @@ import {
   getResumenInventario,
 
 } from "../../controllers/store/product";
-import path from "path";
-import multer from 'multer';
 import { authenticate } from "../../controllers/auth/auth.middleware";
+import { upload } from "../../utils/multer";
 
-const storage = multer.diskStorage({
-  destination: function (_req, _file, cb) {
-    cb(null, path.join(__dirname, '../../../uploads'));  // Ruta donde guardar
-  },
-  filename: function (_req, file, cb) {
-    cb(null, Date.now() + '-' + file.originalname);  // Nombre único
-  },
-});
-
-const upload = multer({ storage });;
 const router = express.Router();
 
 // Rutas de productos
@@ -55,18 +44,18 @@ router.post("/carrito", authenticate,async (req, res) => {
   }
 });
 
-router.get("/file/uploads/:fileName", function (req, res) {
-  const fileName = req.params.fileName;
-  const filePath = path.join(__dirname, "../../../uploads", fileName);
+// router.get("/file/uploads/:fileName", function (req, res) {
+//   const fileName = req.params.fileName;
+//   const filePath = path.join(__dirname, "../../../uploads", fileName);
 
-  res.sendFile(filePath, function (err) {
-    if (err) {
-      console.error("Error al enviar el archivo:", err);
-      res.status(500).send("Archivo no encontrado o error interno.");
-    } else {
-      console.log(`Archivo enviado: ${fileName}`);
-    }
-  });
-});
+//   res.sendFile(filePath, function (err) {
+//     if (err) {
+//       console.error("Error al enviar el archivo:", err);
+//       res.status(500).send("Archivo no encontrado o error interno.");
+//     } else {
+//       console.log(`Archivo enviado: ${fileName}`);
+//     }
+//   });
+// });
 
 export default router;

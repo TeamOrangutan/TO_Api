@@ -3,12 +3,7 @@ import { prisma } from "../../prisma";
 import { upload } from "../../utils/multer";
 import { prismaclient } from "../../index";
 import Decimal from "decimal.js";
-
-interface Talla {
-  id: number;
-  name: string;
-  stock: number;
-}
+import supabase from "../../utils/supabaseClient";
 
 export const createProduct = (req: Request, res: Response) => {
   // Middleware de multer para manejar múltiples imágenes (máximo 10)
@@ -32,19 +27,36 @@ export const createProduct = (req: Request, res: Response) => {
           .json({ error: "Se deben subir al menos una imagen." });
       }
       // Validar que los archivos sean imágenes
-      const validImageTypes = ["image/jpeg", "image/png", "image/gif"];
-      const invalidFiles = req.files.filter(
-        (file: any) => !validImageTypes.includes(file.mimetype)
-      );
+      const validTypes = ["image/jpeg", "image/png", "image/gif"];
+      const files = req.files as Express.Multer.File[];
 
-      if (invalidFiles.length > 0) {
-        return res.status(400).json({
-          error: "Solo se permiten archivos de imagen (JPG, PNG, GIF).",
-        });
+      const imagenesUrls: string[] = [];
+      for (const file of files) {
+        if (!validTypes.includes(file.mimetype)) {
+          return res
+            .status(400)
+            .json({ error: "Archivo no es una imagen válida." });
+        }
+        const fileName = `${Date.now()}-${file.originalname}`;
+        const filePath = `/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("products")
+          .upload(filePath, file.buffer, { contentType: file.mimetype });
+
+        if (uploadError) {
+          console.error("Error en upload a Supabase:", uploadError);
+          return res.status(500).json({ error: "Error al subir imagen." });
+        }
+
+        const { data } = supabase.storage
+          .from("products")
+          .getPublicUrl(filePath);
+
+        console.log(data);
+
+        imagenesUrls.push(data.publicUrl);
       }
-
-      // Obtener las rutas de las imágenes subidas
-      const imagenes = req.files.map((file: Express.Multer.File) => file.path);
 
       // Extraer datos del cuerpo de la solicitud
       const { nombre, precioVenta, descripcion, estado, tallas } = req.body;
@@ -122,7 +134,7 @@ export const createProduct = (req: Request, res: Response) => {
 
       // Registrar las imágenes asociadas al producto
       await prisma.iMAGEN.createMany({
-        data: imagenes.map((url) => ({
+        data: imagenesUrls.map((url) => ({
           url,
           producto_fk: producto.producto_pk,
         })),
@@ -148,7 +160,7 @@ export const createProduct = (req: Request, res: Response) => {
           ...producto,
           tallas: tallasRegistradas, // Incluir las tallas en la respuesta
         },
-        imagenes, // Incluir las imágenes asociadas al producto
+        imagenesUrls, // Incluir las imágenes asociadas al producto
       });
     } catch (error) {
       console.error("Error al crear producto:", error);
@@ -649,8 +661,6 @@ export const deleteItemCarrito = async (req: Request, res: Response) => {
         .json({ message: "Ítem no encontrado en este carrito" });
     }
 
-  
-
     const productoActualizado = await prisma.pRODUCTOS.findUnique({
       where: { producto_pk: carritoItem.producto_fk },
       include: { tallas: true },
@@ -807,37 +817,42 @@ export const updateProductById = async (req: Request, res: Response) => {
   } = req.body;
   const { id } = req.params;
 
-  console.log("Datos recibidos:", req.body);
-  console.log("Imágenes recibidas:", req.files); // Aquí tienes el array de imágenes
-  const imagenesAntiguas = JSON.parse(req.body.imagenesAntiguas); // Llega como string
+  const imagenesAntiguas = JSON.parse(req.body.imagenesAntiguas); 
+  const validTypes = ["image/jpeg", "image/png", "image/gif"];
+  const files = (req.files as Express.Multer.File[]) || [];
+  const imagenesUrls: string[] = [];
 
-  console.log("imagenesAntiguas");
-  console.log(imagenesAntiguas);
+  if (files.length > 0) {
+    for (const file of files) {
+      if (!validTypes.includes(file.mimetype)) {
+        return res
+          .status(400)
+          .json({ error: "Archivo no es una imagen válida." });
+      }
 
-  // Comprobar si req.files es un array de archivos y mapear las rutas de las imágenes
-  const imagenes = Array.isArray(req.files)
-    ? (req.files as Express.Multer.File[]).map(
-        (file) => `uploads/${file.filename}`
-      )
-    : [];
+      const fileName = `${Date.now()}-${file.originalname}`;
+      const filePath = `/${fileName}`;
 
-  console.log("Imágenes procesadas:");
-  console.log(JSON.parse(tallas));
-  const tallasP = JSON.parse(tallas);
-  if (tallasP) {
-    tallasP.map((talla: Talla) => {
-      console.log("Talla id:", talla.id);
-      console.log("Talla name:", talla.name);
-      console.log("Talla stock:", talla.stock);
-    });
-  } else {
-    console.log("tallas no es un array:", tallas);
+      const { error: uploadError } = await supabase.storage
+        .from("products")
+        .upload(filePath, file.buffer, { contentType: file.mimetype });
+
+      if (uploadError) {
+        console.error("Error en upload a Supabase:", uploadError);
+        return res.status(500).json({ error: "Error al subir imagen." });
+      }
+
+      const { data } = supabase.storage.from("products").getPublicUrl(filePath);
+
+      imagenesUrls.push(data.publicUrl);
+    }
   }
+
+  const tallasP = JSON.parse(tallas);
 
   try {
     const productoId = Number(id);
 
-    // 1. Actualizar los datos principales del producto
     await prismaclient.pRODUCTOS.update({
       where: { producto_pk: productoId },
       data: {
@@ -849,12 +864,9 @@ export const updateProductById = async (req: Request, res: Response) => {
       },
     });
 
-    // 2. Eliminar tallas anteriores
     await prismaclient.tALLA.deleteMany({
       where: { producto_fk: productoId },
     });
-
-    // 3. Insertar nuevas tallas
 
     for (const talla of tallasP) {
       await prismaclient.tALLA.create({
@@ -866,7 +878,6 @@ export const updateProductById = async (req: Request, res: Response) => {
       });
     }
 
-    // 4. Eliminar todas las imágenes anteriores
     await prismaclient.iMAGEN.deleteMany({
       where: {
         producto_fk: productoId,
@@ -874,8 +885,7 @@ export const updateProductById = async (req: Request, res: Response) => {
     });
     console.log("Imágenes anteriores eliminadas");
 
-    // 5. Insertar las imágenes antiguas (si las hay) y las nuevas
-    const imagenesFinales = imagenesAntiguas.concat(imagenes); // Combina las imágenes antiguas con las nuevas
+    const imagenesFinales = imagenesAntiguas.concat(imagenesUrls); // Combina las imágenes antiguas con las nuevas
     if (imagenesFinales.length > 0) {
       for (const url of imagenesFinales) {
         await prismaclient.iMAGEN.create({
@@ -888,10 +898,14 @@ export const updateProductById = async (req: Request, res: Response) => {
       console.log("Imágenes actualizadas (nuevas y antiguas)");
     }
 
-    res.status(200).json({ message: "Producto actualizado correctamente" });
+    return res
+      .status(200)
+      .json({ message: "Producto actualizado correctamente" });
   } catch (error) {
     console.error("Error al actualizar el producto:", error);
-    res.status(500).json({ error: "Error interno al actualizar el producto" });
+    return res
+      .status(500)
+      .json({ error: "Error interno al actualizar el producto" });
   }
 };
 
