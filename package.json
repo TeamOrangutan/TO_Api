@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc",
-    "start": "node Build/src/index.js",
+    "start": "ts-node Build/src/index.js",
     "dev": "ts-node-dev src/index.ts",
     "tsc": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
