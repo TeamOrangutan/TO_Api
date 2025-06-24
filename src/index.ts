@@ -18,7 +18,16 @@ app.use(express.json());
 
 export const prismaclient = new PrismaClient();
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
+
+app.get('/', (_req, res) => {
+  res.send('API is running');
+});
+
+app.listen(PORT, () => {
+  console.log(`App listening on port ${PORT}`);
+  console.log(`Swagger Docs available at http://localhost:${PORT}/api-docs`);
+});
 
 app.use(bodyParser.json());
 app.use(express.json());
@@ -30,7 +39,4 @@ app.use('/api/auth', authRouter);
 app.use('/api/payments', paypalRouter);
 app.use('/api/orders', orderRoute)
 
-app.listen(PORT, () => {
-  console.log(`App listening on port ${PORT}`);
-  console.log(`Swagger Docs available at http://localhost:${PORT}/api-docs`);
-});
+
