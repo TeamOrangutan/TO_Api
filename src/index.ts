@@ -8,6 +8,7 @@ import authRouter from './routes/auth/auth.route';
 import expressOasGenerator from 'express-oas-generator';
 import paypalRouter from './routes/payments/checkout.route';
 import orderRoute from './routes/orders/orders.route';
+
 const app = express();
 
 // Inicializar express-oas-generator antes de cualquier middleware
@@ -15,28 +16,23 @@ expressOasGenerator.init(app, {});
 
 app.use(cors());
 app.use(express.json());
+app.use(bodyParser.json());
 
 export const prismaclient = new PrismaClient();
-
-const PORT = process.env.PORT || 8080;
-
-app.get('/', (_req, res) => {
-  res.send('API is running');
-});
-
-app.listen(PORT, () => {
-  console.log(`App listening on port ${PORT}`);
-  console.log(`Swagger Docs available at http://localhost:${PORT}/api-docs`);
-});
-
-app.use(bodyParser.json());
-app.use(express.json());
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use('/api', AppProduct);
 app.use('/api/auth', authRouter);
 app.use('/api/payments', paypalRouter);
-app.use('/api/orders', orderRoute)
+app.use('/api/orders', orderRoute);
 
+app.get('/', (_req, res) => {
+  res.send('API is running');
+});
 
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, () => {
+  console.log(`App listening on port ${PORT}`);
+  console.log(`Swagger Docs available at http://localhost:${PORT}/api-docs`);
+});
