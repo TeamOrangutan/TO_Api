@@ -10,7 +10,7 @@ const transporter = nodemailer.createTransport({
 });
 
 export const sendResetPasswordEmail = async (to: string, token: string) => {
-  const resetLink = `http://localhost:5173/reset-password/${token}`;
+  const resetLink = `https://teamorangutan.netlify.app/${token}`;
 
   const logoPath = path.join(process.cwd(), "assets/logo2.png");
 
