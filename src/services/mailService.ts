@@ -10,9 +10,9 @@ const transporter = nodemailer.createTransport({
 });
 
 export const sendResetPasswordEmail = async (to: string, token: string) => {
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-  const resetLink = `${frontendUrl}/reset-password/${token}`;
-  const logoPath = path.join(process.cwd(), "assets/logo2.png");
+const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    const resetLink = `${frontendUrl}/reset-password/${token}`;
+const logoPath = path.join(process.cwd(), "assets/logo2.png");
 
   await transporter.sendMail({
     from: `"Team Orangutan" <${process.env.MAIL_USER}>`,
@@ -34,7 +34,7 @@ export const sendResetPasswordEmail = async (to: string, token: string) => {
         </div>
         <p>Este enlace expirará después de un tiempo por seguridad.</p>
         <p style="font-size: 12px; color: #666;">Si tienes problemas, copia y pega este enlace en tu navegador:</p>
-       
+        <p style="font-size: 12px; color: #666;">${resetLink}</p>
       </div>
     `,
     attachments: [

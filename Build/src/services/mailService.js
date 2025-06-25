@@ -23,7 +23,9 @@ const transporter = nodemailer_1.default.createTransport({
     },
 });
 const sendResetPasswordEmail = (to, token) => __awaiter(void 0, void 0, void 0, function* () {
-    const resetLink = `http://localhost:5173/reset-password/${token}`;
+const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    const resetLink = `${frontendUrl}/reset-password/${token}`;
+    
     const logoPath = path_1.default.join(process.cwd(), "assets/logo2.png");
     yield transporter.sendMail({
         from: `"Team Orangutan" <${process.env.MAIL_USER}>`,
