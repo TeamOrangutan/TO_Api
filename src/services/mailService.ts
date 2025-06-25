@@ -26,15 +26,10 @@ export const sendResetPasswordEmail = async (to: string, token: string) => {
         <h2 style="text-align: center;">Recuperar tu contraseña</h2>
         <p>Hola,</p>
         <p>Hemos recibido una solicitud para restablecer tu contraseña. Si no fuiste tú, puedes ignorar este correo.</p>
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${resetLink}" 
-             style="background-color: #000; color: #fff; padding: 12px 20px; text-decoration: none; border-radius: 5px;">
-            Cambiar contraseña
-          </a>
-        </div>
+        
         <p>Este enlace expirará después de un tiempo por seguridad.</p>
         <p style="font-size: 12px; color: #666;">Si tienes problemas, copia y pega este enlace en tu navegador:</p>
-        <p style="font-size: 12px; color: #666;">${resetLink}</p>
+       
       </div>
     `,
     attachments: [
