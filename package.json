@@ -14,7 +14,8 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@paypal/paypal-server-sdk": "^1.0.0",
+    "@paypal/checkout-server-sdk": "^1.0.3",
+    "@paypal/paypal-server-sdk": "^1.1.0",
     "@prisma/client": "^5.22.0",
     "@supabase/supabase-js": "^2.50.0",
     "bcrypt": "^6.0.0",
