@@ -34,15 +34,23 @@ app.get("/", (_req, res) => {
 const PORT = process.env.PORT || 3000;
 
 if (!PORT) {
-  console.error('❌ Environment variable PORT not defined.');
+  console.error("❌ Environment variable PORT not defined.");
   process.exit(1);
 }
 
 app.listen(PORT, () => {
   console.log(`✅ App listening on port ${PORT}`);
+  console.log(
+    "PAYPAL_CLIENT_ID:",
+    process.env.PAYPAL_CLIENT_ID ? "****" : "No definido"
+  );
+  console.log(
+    "PAYPAL_CLIENT_SECRET:",
+    process.env.PAYPAL_CLIENT_SECRET ? "****" : "No definido"
+  );
+
   console.log(`Swagger Docs available at http://localhost:${PORT}/api-docs`);
 });
-
 
 process.on("uncaughtException", (err) => {
   console.error("Uncaught Exception:", err);
