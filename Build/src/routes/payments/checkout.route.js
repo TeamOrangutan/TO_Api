@@ -34,13 +34,14 @@ const client = new paypal_server_sdk_1.Client({
         oAuthClientSecret: PAYPAL_CLIENT_SECRET,
     },
     timeout: 0,
-    environment: paypal_server_sdk_1.Environment.Sandbox,
+    environment: paypal_server_sdk_1.Environment.Production,
     logging: {
         logLevel: paypal_server_sdk_1.LogLevel.Info,
         logRequest: { logBody: true },
         logResponse: { logHeaders: true },
     },
 });
+console.log("Entorno PayPal:", client);
 const ordersController = new paypal_server_sdk_1.OrdersController(client);
 const paypalRouter = (0, express_1.Router)();
 const createOrder = (cart) => __awaiter(void 0, void 0, void 0, function* () {
@@ -67,9 +68,10 @@ const createOrder = (cart) => __awaiter(void 0, void 0, void 0, function* () {
                 },
             ],
         },
-        prefer: "return=minimal",
+        prefer: "return=representation",
     };
     try {
+        console.log("🛒 Payload enviado a PayPal:", JSON.stringify(collect, null, 2));
         const _a = yield ordersController.createOrder(collect), { body } = _a, httpResponse = __rest(_a, ["body"]);
         let parsedBody;
         if (typeof body === "string") {
@@ -77,6 +79,9 @@ const createOrder = (cart) => __awaiter(void 0, void 0, void 0, function* () {
         }
         else if (Buffer.isBuffer(body)) {
             parsedBody = JSON.parse(body.toString("utf-8"));
+        }
+        else if (typeof body === "object") {
+            parsedBody = body;
         }
         else {
             throw new Error("Unexpected body type in response");
@@ -87,10 +92,17 @@ const createOrder = (cart) => __awaiter(void 0, void 0, void 0, function* () {
         };
     }
     catch (error) {
+        console.error("❌ Error al crear orden PayPal:");
+        console.error(error);
         if (error instanceof paypal_server_sdk_1.ApiError) {
+            console.error("🛑 ApiError:", error.message);
+            console.error("🧾 Detalle:", JSON.stringify(error, null, 2));
             throw new Error(error.message);
         }
-        throw error;
+        if (error.response) {
+            console.error("📨 Error response data:", error.response.data);
+        }
+        throw new Error("Fallo inesperado al crear orden.");
     }
 });
 const captureOrder = (orderID) => __awaiter(void 0, void 0, void 0, function* () {
@@ -165,7 +177,13 @@ paypalRouter.post("/orders", (req, res) => __awaiter(void 0, void 0, void 0, fun
     }
     catch (error) {
         console.error("Failed to create order:", error);
-        return res.status(500).json({ error: "Failed to create order." });
+        if (error.stack) {
+            console.error(error.stack);
+        }
+        return res.status(500).json({
+            error: "Failed to create order.",
+            details: error.message || error.toString(),
+        });
     }
 }));
 paypalRouter.post("/orders/:orderID/capture", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
