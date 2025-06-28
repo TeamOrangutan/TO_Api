@@ -9,7 +9,6 @@ import {
   OrderRequest,
 } from "@paypal/paypal-server-sdk";
 import { PrismaClient } from "@prisma/client";
-
 const { PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET } = process.env;
 
 if (!PAYPAL_CLIENT_ID || !PAYPAL_CLIENT_SECRET) {
@@ -82,15 +81,17 @@ const createOrder = async (cart: Cart) => {
   };
 
   try {
-    const { body, ...httpResponse } = await ordersController.createOrder(
-      collect
-    );
+    console.log("🛒 Payload enviado a PayPal:", JSON.stringify(collect, null, 2));
+
+    const { body, ...httpResponse } = await ordersController.createOrder(collect);
 
     let parsedBody: any;
     if (typeof body === "string") {
       parsedBody = JSON.parse(body);
     } else if (Buffer.isBuffer(body)) {
       parsedBody = JSON.parse(body.toString("utf-8"));
+    } else if (typeof body === "object") {
+      parsedBody = body;
     } else {
       throw new Error("Unexpected body type in response");
     }
@@ -99,11 +100,21 @@ const createOrder = async (cart: Cart) => {
       jsonResponse: parsedBody,
       httpStatusCode: httpResponse.statusCode,
     };
-  } catch (error) {
+  } catch (error: any) {
+    console.error("❌ Error al crear orden PayPal:");
+    console.error(error);
+
     if (error instanceof ApiError) {
+      console.error("🛑 ApiError:", error.message);
+      console.error("🧾 Detalle:", JSON.stringify(error, null, 2));
       throw new Error(error.message);
     }
-    throw error;
+
+    if (error.response) {
+      console.error("📨 Error response data:", error.response.data);
+    }
+
+    throw new Error("Fallo inesperado al crear orden.");
   }
 };
 
