@@ -81,9 +81,14 @@ const createOrder = async (cart: Cart) => {
   };
 
   try {
-    console.log("🛒 Payload enviado a PayPal:", JSON.stringify(collect, null, 2));
+    console.log(
+      "🛒 Payload enviado a PayPal:",
+      JSON.stringify(collect, null, 2)
+    );
 
-    const { body, ...httpResponse } = await ordersController.createOrder(collect);
+    const { body, ...httpResponse } = await ordersController.createOrder(
+      collect
+    );
 
     let parsedBody: any;
     if (typeof body === "string") {
@@ -193,9 +198,15 @@ paypalRouter.post("/orders", async (req: Request, res: Response) => {
     const { jsonResponse, httpStatusCode } = await createOrder(cart);
 
     return res.status(httpStatusCode).json(jsonResponse);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Failed to create order:", error);
-    return res.status(500).json({ error: "Failed to create order." });
+    if (error.stack) {
+      console.error(error.stack);
+    }
+    return res.status(500).json({
+      error: "Failed to create order.",
+      details: error.message || error.toString(),
+    });
   }
 });
 
