@@ -76,7 +76,7 @@ const createOrder = async (cart: Cart) => {
         },
       ],
     },
-    prefer: "return=minimal",
+    prefer: "return=representation",
   };
 
   try {
