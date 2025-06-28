@@ -31,6 +31,8 @@ const client = new Client({
   },
 });
 
+console.log("Entorno PayPal:", client);
+
 const ordersController = new OrdersController(client);
 
 interface CartItem {
